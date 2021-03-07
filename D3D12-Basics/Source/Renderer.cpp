@@ -24,6 +24,8 @@ class D3D12Context
     ComPtr<ID3D12DescriptorHeap> m_rtvDescriptorHeap;
     ComPtr<ID3D12Resource> m_renderTargets[NUM_SWAP_CHAIN_BUFFERS];
 
+    ComPtr<ID3D12RootSignature> m_emptyRootSignature;
+
     // DXGI
     ComPtr<IDXGIFactory2> m_dxgiFactory2;
     ComPtr<IDXGISwapChain3> m_SwapChain3;
@@ -34,6 +36,10 @@ class D3D12Context
 
 public:
     D3D12Context();
+
+    void InitialisePipeline();
+
+    void LoadInitialAssets();
 };
 
 D3D12Context::D3D12Context()
@@ -50,6 +56,13 @@ D3D12Context::D3D12Context()
         }
     }
 
+    InitialisePipeline();
+
+    LoadInitialAssets();
+}
+
+void D3D12Context::InitialisePipeline()
+{
     // Create Device
     {
         ASSERT_SUCCEEDED(D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_device)));
@@ -119,10 +132,24 @@ D3D12Context::D3D12Context()
             handle.Offset(1, m_rtvDescriptorSize);
         }
     }
-    
+
     // Create Command Allocator
     {
         ASSERT_SUCCEEDED(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_cmdAllocator)));
+    }
+}
+
+void D3D12Context::LoadInitialAssets()
+{
+    // Create empty root signature for shaders with no bound resources
+    {
+        CD3DX12_ROOT_SIGNATURE_DESC desc(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+        ComPtr<ID3DBlob> signature;
+        ComPtr<ID3DBlob> error;
+        ASSERT_SUCCEEDED(D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1_0, &signature, &error));
+
+        m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_emptyRootSignature));
     }
 }
 
