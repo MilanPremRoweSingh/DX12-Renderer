@@ -20,6 +20,12 @@ static void sParseCmdLine()
             {
                 tGlobals.fD3DDebug = true;
             }
+
+            if (wcscmp(plpArgs[i], L"-gpuvalidation") == 0)
+            {
+                tGlobals.fD3DDebug = true;
+                tGlobals.fGPUValidation = true;
+            }
         }
     }
 }

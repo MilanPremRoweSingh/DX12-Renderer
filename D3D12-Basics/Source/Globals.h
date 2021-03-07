@@ -2,7 +2,8 @@
 
 struct Globals
 {
-    bool fD3DDebug;
+    bool fD3DDebug = false;
+    bool fGPUValidation = false;
 };
 
 extern Globals tGlobals;
