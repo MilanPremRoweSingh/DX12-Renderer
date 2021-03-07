@@ -122,6 +122,7 @@
       <ForcedIncludeFiles>EnginePCH.h</ForcedIncludeFiles>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4065</DisableSpecificWarnings>
+      <AdditionalIncludeDirectories>$(ProjectDir)/External</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -143,6 +144,7 @@
       <ForcedIncludeFiles>EnginePCH.h</ForcedIncludeFiles>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4065</DisableSpecificWarnings>
+      <AdditionalIncludeDirectories>$(ProjectDir)/External</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

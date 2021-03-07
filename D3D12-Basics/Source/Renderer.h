@@ -1,6 +1,6 @@
 #pragma once
 
-struct GraphicsContext;
+class GraphicsContext;
 
 class Renderer 
 {
@@ -10,5 +10,5 @@ public:
 
 private:
 
-    GraphicsContext* ptContext;
+    D3D12Context* ptContext;
 };
