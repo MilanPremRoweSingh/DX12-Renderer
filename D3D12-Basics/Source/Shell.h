@@ -14,3 +14,5 @@ int32 GetWindowWidth();
 int32 GetWindowHeight();
 
 bool WindowExists();
+
+HWND GetNativeViewHandle();

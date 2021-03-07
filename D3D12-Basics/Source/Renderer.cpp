@@ -1,12 +1,19 @@
 #include "Renderer.h"
 
+#include "Shell.h"
+
 #include "d3d12.h"
-#include "d3d12sdklayers.h"
+#include "dxgi1_3.h"
 
 struct GraphicsContext
 {
     ID3D12Device* pDevice;
     ID3D12CommandQueue* pCmdQueue;
+
+    // DXGI
+    IDXGIFactory2* pDXGIFactory;
+    IDXGISwapChain1* pSwapChain;
+
 };
 
 Renderer::Renderer()
@@ -43,13 +50,38 @@ Renderer::Renderer()
 
     // Create Swapchain
     {
+        HRESULT result = CreateDXGIFactory2(0, IID_PPV_ARGS(&ptContext->pDXGIFactory));
+        ASSERT(SUCCEEDED(result));
 
+        DXGI_SWAP_CHAIN_DESC1 desc = {};
+        desc.Width = GetWindowWidth();
+        desc.Height = GetWindowHeight();
+        desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+        desc.BufferCount = 2;
+        desc.Stereo = false;
+        desc.SampleDesc.Count = 1;
+        desc.SampleDesc.Quality = 0;
+        desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;    
+        desc.Scaling = DXGI_SCALING_NONE;
+        desc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+
+        result = ptContext->pDXGIFactory->CreateSwapChainForHwnd(
+            ptContext->pCmdQueue,
+            GetNativeViewHandle(),
+            &desc,
+            NULL,
+            NULL,
+            &ptContext->pSwapChain);
+        ASSERT(SUCCEEDED(result));
     }
 }
 
 
 Renderer::~Renderer()
 {
+    ptContext->pSwapChain->Release();
+    ptContext->pDXGIFactory->Release();
     ptContext->pCmdQueue->Release();
     ptContext->pDevice->Release();
     delete ptContext;

@@ -115,3 +115,8 @@ int32 GetWindowHeight()
 {
     return WINDOW_HEIGHT;
 }
+
+HWND GetNativeViewHandle()
+{
+    return hWnd;
+}
