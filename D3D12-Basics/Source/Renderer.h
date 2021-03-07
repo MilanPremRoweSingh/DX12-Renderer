@@ -1,6 +1,6 @@
 #pragma once
 
-class GraphicsContext;
+class D3D12Context;
 
 class Renderer 
 {

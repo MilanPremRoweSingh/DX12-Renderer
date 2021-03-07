@@ -19,8 +19,10 @@ class D3D12Context
 {
     ComPtr<ID3D12Device> m_device;
     ComPtr<ID3D12CommandQueue> m_cmdQueues;
+    ComPtr<ID3D12CommandAllocator> m_cmdAllocator;
+
     ComPtr<ID3D12DescriptorHeap> m_rtvDescriptorHeap;
-    ComPtr<ID3D12Resource> m_rtvDescriptors[NUM_SWAP_CHAIN_BUFFERS];
+    ComPtr<ID3D12Resource> m_renderTargets[NUM_SWAP_CHAIN_BUFFERS];
 
     // DXGI
     ComPtr<IDXGIFactory2> m_dxgiFactory2;
@@ -112,17 +114,21 @@ D3D12Context::D3D12Context()
 
         for (int32 i = 0; i < NUM_SWAP_CHAIN_BUFFERS; i++)
         {
-            ASSERT_SUCCEEDED(m_SwapChain3->GetBuffer(m_frameIndex, IID_PPV_ARGS(&m_rtvDescriptors[i])));
-            m_device->CreateRenderTargetView(m_rtvDescriptors[i].Get(), NULL, handle);
+            ASSERT_SUCCEEDED(m_SwapChain3->GetBuffer(m_frameIndex, IID_PPV_ARGS(&m_renderTargets[i])));
+            m_device->CreateRenderTargetView(m_renderTargets[i].Get(), NULL, handle);
             handle.Offset(1, m_rtvDescriptorSize);
         }
     }
     
+    // Create Command Allocator
+    {
+        ASSERT_SUCCEEDED(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_cmdAllocator)));
+    }
 }
 
 Renderer::Renderer()
 {
-    ptContext = new GraphicsContext();
+    ptContext = new D3D12Context();
 
 }
 
