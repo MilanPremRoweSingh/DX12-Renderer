@@ -91,6 +91,11 @@ void ShellInitialise(
     sCreateWindow(hInstance);
 }
 
+void ShellDispose()
+{
+
+}
+
 void ProcessWindowMessages()
 {
     MSG msg;

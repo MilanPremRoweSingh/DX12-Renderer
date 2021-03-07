@@ -9,3 +9,8 @@ void EngineInitialise()
 {   
     gptRenderer = new Renderer();
 }
+
+void EngineDispose()
+{
+    delete gptRenderer;
+}

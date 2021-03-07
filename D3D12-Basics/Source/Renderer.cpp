@@ -2,17 +2,20 @@
 
 #include "Shell.h"
 
+#include <wrl/client.h>
 #include "d3d12.h"
 #include "dxgi1_3.h"
 
+using Microsoft::WRL::ComPtr;
+
 struct GraphicsContext
 {
-    ID3D12Device* pDevice;
-    ID3D12CommandQueue* pCmdQueue;
+    ComPtr<ID3D12Device> pDevice;
+    ComPtr<ID3D12CommandQueue> pCmdQueue;
 
     // DXGI
-    IDXGIFactory2* pDXGIFactory;
-    IDXGISwapChain1* pSwapChain;
+    ComPtr<IDXGIFactory2> pDXGIFactory;
+    ComPtr<IDXGISwapChain1> pSwapChain;
 
 };
 
@@ -67,7 +70,7 @@ Renderer::Renderer()
         desc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
 
         result = ptContext->pDXGIFactory->CreateSwapChainForHwnd(
-            ptContext->pCmdQueue,
+            ptContext->pCmdQueue.Get(),
             GetNativeViewHandle(),
             &desc,
             NULL,
@@ -80,9 +83,5 @@ Renderer::Renderer()
 
 Renderer::~Renderer()
 {
-    ptContext->pSwapChain->Release();
-    ptContext->pDXGIFactory->Release();
-    ptContext->pCmdQueue->Release();
-    ptContext->pDevice->Release();
     delete ptContext;
 }

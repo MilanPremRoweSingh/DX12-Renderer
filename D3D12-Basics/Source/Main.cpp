@@ -21,6 +21,10 @@ int WinMain(
     {
         ProcessWindowMessages();
     }
+    
+    EngineDispose();
+
+    ShellDispose();
 
     return 0;
 }

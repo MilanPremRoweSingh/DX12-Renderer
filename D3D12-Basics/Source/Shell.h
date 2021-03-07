@@ -8,6 +8,8 @@
 void ShellInitialise(
     HINSTANCE hInstance);
 
+void ShellDispose();
+
 void ProcessWindowMessages();
 
 int32 GetWindowWidth();
