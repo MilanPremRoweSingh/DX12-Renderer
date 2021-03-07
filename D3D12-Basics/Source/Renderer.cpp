@@ -40,4 +40,17 @@ Renderer::Renderer()
         HRESULT result = ptContext->pDevice->CreateCommandQueue(&desc, IID_PPV_ARGS(&ptContext->pCmdQueue));
         ASSERT(SUCCEEDED(result));
     }
+
+    // Create Swapchain
+    {
+
+    }
+}
+
+
+Renderer::~Renderer()
+{
+    ptContext->pCmdQueue->Release();
+    ptContext->pDevice->Release();
+    delete ptContext;
 }
