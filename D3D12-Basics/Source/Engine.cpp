@@ -2,6 +2,7 @@
 
 #include "Renderer.h"
 
+#include <windows.h>
 
 Renderer* gptRenderer;
 
@@ -13,4 +14,9 @@ void EngineInitialise()
 void EngineDispose()
 {
     delete gptRenderer;
+}
+
+void EngineLog(char* message)
+{
+    OutputDebugStringA(message);
 }

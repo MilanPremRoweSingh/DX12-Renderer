@@ -1,15 +1,20 @@
 #include "Renderer.h"
 
 #include "Shell.h"
+#include "Engine.h"
 
 #include <wrl/client.h>
 
 #include "d3d12.h"
 #include "d3dx12.h"
+#include "d3dcompiler.h"
 
 #include "dxgi1_6.h"
 
 #define NUM_SWAP_CHAIN_BUFFERS 2
+
+// For now assume all shaders are in the same file
+#define SHADER_FILE L"../Shaders/Shaders.hlsl"
 
 #define ASSERT_SUCCEEDED(x) {HRESULT result = x; assert(SUCCEEDED(result));} 
 
@@ -59,6 +64,37 @@ D3D12Context::D3D12Context()
     InitialisePipeline();
 
     LoadInitialAssets();
+}
+
+static void sCompileShader(const char* entryPoint, bool fIsVertexShader, ID3DBlob** shaderBlob)
+{
+    ComPtr<ID3DBlob> error;
+
+    UINT compileFlags = 0;
+    if (tGlobals.fD3DDebug)
+    {
+        compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+    }
+
+    HRESULT result = D3DCompileFromFile(
+        SHADER_FILE,
+        nullptr,
+        nullptr,
+        entryPoint,
+        fIsVertexShader ? "vs_5_0" : "ps_5_0",
+        compileFlags,
+        0,
+        shaderBlob,
+        &error);
+
+    if (!SUCCEEDED(result))
+    {
+        if (error)
+        {
+            EngineLog((char*)error->GetBufferPointer());
+        }
+    }
+
 }
 
 void D3D12Context::InitialisePipeline()
@@ -151,6 +187,33 @@ void D3D12Context::LoadInitialAssets()
 
         m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_emptyRootSignature));
     }
+
+    // Compile Shaders and create PSO
+    ComPtr<ID3DBlob> vertexShader;
+    sCompileShader("HelloTriangleVS", true, &vertexShader);
+
+    ComPtr<ID3DBlob> pixelShader;
+    sCompileShader("HelloTrianglePS", false, &pixelShader);
+
+    // Create PSO
+    {
+        D3D12_INPUT_ELEMENT_DESC inputElementDescs[]
+        {
+            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "COLOR0", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        };
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
+        desc.pRootSignature = m_emptyRootSignature.Get();
+        desc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
+        desc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
+        desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        desc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
+        desc.
+    }
+
+
 }
 
 Renderer::Renderer()
