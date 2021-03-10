@@ -31,6 +31,8 @@ class D3D12Context
 
     ComPtr<ID3D12RootSignature> m_emptyRootSignature;
 
+    ComPtr<ID3D12PipelineState> m_pipelineState;
+
     // DXGI
     ComPtr<IDXGIFactory2> m_dxgiFactory2;
     ComPtr<IDXGISwapChain3> m_SwapChain3;
@@ -200,7 +202,7 @@ void D3D12Context::LoadInitialAssets()
         D3D12_INPUT_ELEMENT_DESC inputElementDescs[]
         {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "COLOR0", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         };
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
@@ -208,9 +210,16 @@ void D3D12Context::LoadInitialAssets()
         desc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
         desc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
         desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-        desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        desc.DepthStencilState.DepthEnable = false;
+        desc.DepthStencilState.StencilEnable = false;
         desc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
-        desc.
+        desc.SampleMask = UINT_MAX;
+        desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        desc.NumRenderTargets = 1;
+        desc.RTVFormats[0]= DXGI_FORMAT_R8G8B8A8_UNORM;
+        desc.SampleDesc.Count = 1;
+
+        ASSERT_SUCCEEDED(m_device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&m_pipelineState)));
     }
 
 
