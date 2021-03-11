@@ -5,6 +5,7 @@
 void Renderer::Render()
 {
     ptContext->Draw();
+    ptContext->Present();
 }
 
 Renderer::Renderer()

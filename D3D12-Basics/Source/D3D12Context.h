@@ -48,4 +48,6 @@ public:
     void LoadInitialAssets();
 
     void Draw();
+
+    void Present();
 };

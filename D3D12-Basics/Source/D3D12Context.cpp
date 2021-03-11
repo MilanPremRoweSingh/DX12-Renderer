@@ -137,7 +137,7 @@ void D3D12Context::InitialisePipeline()
 
         for (int32 i = 0; i < NUM_SWAP_CHAIN_BUFFERS; i++)
         {
-            ASSERT_SUCCEEDED(m_SwapChain3->GetBuffer(m_frameIndex, IID_PPV_ARGS(&m_renderTargets[i])));
+            ASSERT_SUCCEEDED(m_SwapChain3->GetBuffer(i, IID_PPV_ARGS(&m_renderTargets[i])));
             m_device->CreateRenderTargetView(m_renderTargets[i].Get(), NULL, handle);
             handle.Offset(1, m_rtvDescriptorSize);
         }
@@ -182,6 +182,7 @@ void D3D12Context::LoadInitialAssets()
         desc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
         desc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
         desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
         desc.DepthStencilState.DepthEnable = false;
         desc.DepthStencilState.StencilEnable = false;
         desc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
@@ -211,9 +212,9 @@ void D3D12Context::LoadInitialAssets()
         const float aspectRatio = GetWindowAspectRatio();
 
         Vertex verts[] = {
-            { {0.50f, 0.75f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f} },
-            { {0.25f, 0.25f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f} },
-            { {0.75f, 0.25f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f} }
+            { { 0.0f, 0.25f * aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
+            { { 0.25f, -0.25f * aspectRatio, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
+            { { -0.25f, -0.25f * aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
         };
 
         // It's bad to use an upload buffer for verts, but use one here for simplicity (more than one read?)
@@ -283,5 +284,70 @@ void D3D12Context::Draw()
     m_cmdList->RSSetViewports(1, &m_viewport);
     m_cmdList->RSSetScissorRects(1, &m_scissorRect);
 
+    // Transition back buffer to rt
+    {
+        D3D12_RESOURCE_TRANSITION_BARRIER transition;
+        transition.pResource = m_renderTargets[m_frameIndex].Get();
+        transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+        transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        transition.Subresource = 0;
 
+        D3D12_RESOURCE_BARRIER barrier;
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition = transition;
+
+        m_cmdList->ResourceBarrier(1, &barrier);
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
+    rtvHandle.ptr = m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + m_frameIndex * m_rtvDescriptorSize;
+
+    m_cmdList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
+
+    // Draw
+    const float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    m_cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+    m_cmdList->DrawInstanced(3, 1, 0, 0);
+
+
+    // Transition back buffer to present
+    {
+        D3D12_RESOURCE_TRANSITION_BARRIER transition;
+        transition.pResource = m_renderTargets[m_frameIndex].Get();
+        transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+        transition.Subresource = 0;
+
+        D3D12_RESOURCE_BARRIER barrier;
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition = transition;
+
+        m_cmdList->ResourceBarrier(1, &barrier);
+    }
+
+    ASSERT_SUCCEEDED(m_cmdList->Close());
+
+    ID3D12CommandList* ppCmdLists[] = { m_cmdList.Get() };
+    m_cmdQueue->ExecuteCommandLists(_countof(ppCmdLists), ppCmdLists);
+}
+
+void D3D12Context::Present()
+{
+    ASSERT_SUCCEEDED(m_SwapChain3->Present(1, 0));
+
+    const UINT64 fence = m_fenceValue++;
+    ASSERT_SUCCEEDED(m_cmdQueue->Signal(m_fence.Get(), fence));
+
+    // Ideally, we'd just continue to prepare the next frame, but for simplicity just wait for it for now.
+    if (m_fence->GetCompletedValue() < fence)
+    {
+        ASSERT_SUCCEEDED(m_fence->SetEventOnCompletion(fence, m_fenceEvent))
+            WaitForSingleObject(m_fenceEvent, INFINITE);
+    }
+
+    m_frameIndex = m_SwapChain3->GetCurrentBackBufferIndex();
 }

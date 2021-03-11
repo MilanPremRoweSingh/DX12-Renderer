@@ -4,7 +4,7 @@
     <ShowAllFiles>true</ShowAllFiles>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>-d3ddebug</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-d3ddebug -gpuvalidation</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerWorkingDirectory>$(ProjectDir)$(Configuration)\</LocalDebuggerWorkingDirectory>
   </PropertyGroup>

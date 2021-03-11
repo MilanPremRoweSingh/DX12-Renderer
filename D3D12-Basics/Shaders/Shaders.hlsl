@@ -12,7 +12,7 @@ struct VS_OUT
 
 struct PS_OUT
 {
-	float4 col : SV_TARGET0;
+	float4 col : SV_TARGET;
 };
 
 VS_OUT HelloTriangleVS(VS_IN I)

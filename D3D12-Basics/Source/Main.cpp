@@ -20,6 +20,7 @@ int WinMain(
     while (WindowExists())
     {
         ProcessWindowMessages();
+        EngineIdle();
     }
     
     EngineDispose();

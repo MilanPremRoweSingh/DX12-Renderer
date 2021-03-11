@@ -20,3 +20,14 @@ void EngineLog(const char* message)
 {
     OutputDebugStringA(message);
 }
+
+void Update()
+{
+
+}
+
+void EngineIdle()
+{
+    Update();
+    gptRenderer->Render();
+}
