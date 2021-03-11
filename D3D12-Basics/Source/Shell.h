@@ -14,6 +14,7 @@ void ProcessWindowMessages();
 
 int32 GetWindowWidth();
 int32 GetWindowHeight();
+float GetWindowAspectRatio();
 
 bool WindowExists();
 

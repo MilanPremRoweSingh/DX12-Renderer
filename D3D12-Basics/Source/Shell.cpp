@@ -121,6 +121,11 @@ int32 GetWindowHeight()
     return WINDOW_HEIGHT;
 }
 
+float GetWindowAspectRatio()
+{
+    return float(GetWindowWidth()) / float(GetWindowHeight());
+}
+
 HWND GetNativeViewHandle()
 {
     return hWnd;

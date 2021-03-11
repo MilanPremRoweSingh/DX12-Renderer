@@ -25,13 +25,18 @@ class D3D12Context
     ComPtr<ID3D12Device> m_device;
     ComPtr<ID3D12CommandQueue> m_cmdQueues;
     ComPtr<ID3D12CommandAllocator> m_cmdAllocator;
+    ComPtr<ID3D12GraphicsCommandList> m_cmdList;
 
     ComPtr<ID3D12DescriptorHeap> m_rtvDescriptorHeap;
     ComPtr<ID3D12Resource> m_renderTargets[NUM_SWAP_CHAIN_BUFFERS];
 
+    ComPtr<ID3D12Resource> m_vertexBuffer;
+    D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+
     ComPtr<ID3D12RootSignature> m_emptyRootSignature;
 
     ComPtr<ID3D12PipelineState> m_pipelineState;
+
 
     // DXGI
     ComPtr<IDXGIFactory2> m_dxgiFactory2;
@@ -222,7 +227,68 @@ void D3D12Context::LoadInitialAssets()
         ASSERT_SUCCEEDED(m_device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&m_pipelineState)));
     }
 
+    // Create Command List
+    {
+        ASSERT_SUCCEEDED(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_cmdAllocator.Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_cmdList)));
+        m_cmdList->Close();
+    }
 
+    // Create Vertex Buffer
+    {
+        struct Vertex
+        {
+            float pos[3];
+            float col[4];
+        };
+
+        const float aspectRatio = GetWindowAspectRatio();
+
+        Vertex verts[] = {
+            { {0.50f, 0.75f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f} },
+            { {0.25f, 0.25f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f} },
+            { {0.75f, 0.25f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f} }
+        }; 
+
+        // It's bad to use an upload buffer for verts, but use one here for simplicity (more than one read?)
+        D3D12_HEAP_PROPERTIES heapProps = {};
+        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+        D3D12_RESOURCE_DESC resourceDesc = {};
+        resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        resourceDesc.Width = sizeof(verts);
+        // The following are required for all buffers
+        resourceDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT; // 64KB
+        resourceDesc.Height = 1;
+        resourceDesc.DepthOrArraySize = 1;
+        resourceDesc.MipLevels = 1;
+        resourceDesc.Format = DXGI_FORMAT_UNKNOWN; 
+        resourceDesc.SampleDesc.Count = 1;
+        resourceDesc.SampleDesc.Quality = 0;
+        resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+        ASSERT_SUCCEEDED(m_device->CreateCommittedResource(
+            &heapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &resourceDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ, // Required starting state of upload buffer
+            nullptr,
+            IID_PPV_ARGS(&m_vertexBuffer)
+        ));
+
+        // Copy data into buffer
+        UINT8* pVertexData;
+
+        D3D12_RANGE range = {0, 0};
+        ASSERT_SUCCEEDED(m_vertexBuffer->Map(0, &range, (void**)&pVertexData));
+        memcpy(pVertexData, verts, sizeof(verts));
+        m_vertexBuffer->Unmap(0, nullptr);
+
+        m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
+        m_vertexBufferView.StrideInBytes = sizeof(Vertex);
+        m_vertexBufferView.SizeInBytes = sizeof(verts);
+    }
 }
 
 Renderer::Renderer()
