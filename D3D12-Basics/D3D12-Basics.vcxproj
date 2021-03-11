@@ -156,6 +156,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Source\D3D12Context.cpp" />
     <ClCompile Include="Source\Engine.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -166,6 +167,7 @@
     <ClCompile Include="Source\Shell.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\D3D12Context.h" />
     <ClInclude Include="Source\Engine.h" />
     <ClInclude Include="Source\EnginePCH.h" />
     <ClInclude Include="Source\Globals.h" />

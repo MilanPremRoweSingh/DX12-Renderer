@@ -4,4 +4,4 @@ void EngineInitialise();
 
 void EngineDispose();
 
-void EngineLog(char* message);
+void EngineLog(const char* message);

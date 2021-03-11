@@ -16,7 +16,7 @@ void EngineDispose()
     delete gptRenderer;
 }
 
-void EngineLog(char* message)
+void EngineLog(const char* message)
 {
     OutputDebugStringA(message);
 }
