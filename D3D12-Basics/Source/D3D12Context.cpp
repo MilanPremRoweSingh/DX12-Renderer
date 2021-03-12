@@ -153,7 +153,20 @@ void D3D12Context::LoadInitialAssets()
 {
     // Create empty root signature for shaders with no bound resources
     {
-        CD3DX12_ROOT_SIGNATURE_DESC desc(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+        D3D12_ROOT_SIGNATURE_DESC desc;
+        
+        D3D12_ROOT_PARAMETER rootParam;
+        rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        rootParam.Constants.Num32BitValues = 1;
+        rootParam.Constants.RegisterSpace = 0;
+        rootParam.Constants.ShaderRegister = 0;
+        rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL; 
+
+        desc.NumParameters = 1;
+        desc.pParameters = &rootParam;
+        desc.NumStaticSamplers = 0;
+        desc.pStaticSamplers = nullptr;
+        desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
         ComPtr<ID3DBlob> signature;
         ComPtr<ID3DBlob> error;
@@ -281,6 +294,11 @@ void D3D12Context::Draw()
     ASSERT_SUCCEEDED(m_cmdList->Reset(m_cmdAllocator.Get(), m_pipelineState.Get()));
 
     m_cmdList->SetGraphicsRootSignature(m_emptyRootSignature.Get());
+
+    static int frame = 0;
+    float scale = GetCurrentFrameTime();
+    m_cmdList->SetGraphicsRoot32BitConstant(0, *((UINT*)&scale), 0);
+
     m_cmdList->RSSetViewports(1, &m_viewport);
     m_cmdList->RSSetScissorRects(1, &m_scissorRect);
 
@@ -301,7 +319,7 @@ void D3D12Context::Draw()
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
-    rtvHandle.ptr = m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + m_frameIndex * m_rtvDescriptorSize;
+    rtvHandle.ptr = m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + (UINT64)m_frameIndex * (UINT64)m_rtvDescriptorSize;
 
     m_cmdList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
 

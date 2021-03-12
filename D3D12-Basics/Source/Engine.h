@@ -6,6 +6,8 @@ void EngineDispose();
 
 void EngineLog(const char* message);
 
-void Update();
+void EngineUpdate();
 
 void EngineIdle();
+
+float GetCurrentFrameTime();

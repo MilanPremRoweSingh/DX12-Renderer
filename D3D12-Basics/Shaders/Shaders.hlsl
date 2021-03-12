@@ -1,3 +1,9 @@
+
+cbuffer Constants0
+{
+	float scale;
+};
+
 struct VS_IN
 {
 	float3 pos : POSITION;
@@ -19,7 +25,7 @@ VS_OUT HelloTriangleVS(VS_IN I)
 {
 	VS_OUT O;
 	O.col = I.col;
-	O.pos = float4(I.pos, 1.0f);
+	O.pos = float4(scale * I.pos, 1.0f);
 	return O;
 }
 
