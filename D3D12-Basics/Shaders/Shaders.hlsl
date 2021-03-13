@@ -1,7 +1,7 @@
 
 cbuffer Constants0
 {
-	float scale;
+	float4x4 mat;
 };
 
 struct VS_IN
@@ -25,7 +25,8 @@ VS_OUT HelloTriangleVS(VS_IN I)
 {
 	VS_OUT O;
 	O.col = I.col;
-	O.pos = float4(scale * I.pos, 1.0f);
+	O.pos = mul(mat, float4(I.pos, 1.0f));
+	O.pos /= O.pos.w;
 	return O;
 }
 

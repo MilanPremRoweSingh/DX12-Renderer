@@ -6,7 +6,10 @@
 #include "Shell.h"
 #include "Engine.h"
 
-#define ASSERT_SUCCEEDED(x) {HRESULT result = x; assert(SUCCEEDED(result));} 
+// We won't want to include camera down the line, but set them as constant variables that the d3d12 context doesn't know anything about
+#include "Camera.h"
+
+#define ASSERT_SUCCEEDED(x) {HRESULT result = x; /*assert(SUCCEEDED(result));*/} 
 
 
 D3D12Context::D3D12Context()
@@ -157,7 +160,7 @@ void D3D12Context::LoadInitialAssets()
         
         D3D12_ROOT_PARAMETER rootParam;
         rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-        rootParam.Constants.Num32BitValues = 1;
+        rootParam.Constants.Num32BitValues = sizeof(Matrix4x4) / 4;
         rootParam.Constants.RegisterSpace = 0;
         rootParam.Constants.ShaderRegister = 0;
         rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL; 
@@ -225,9 +228,9 @@ void D3D12Context::LoadInitialAssets()
         const float aspectRatio = GetWindowAspectRatio();
 
         Vertex verts[] = {
-            { { 0.0f, 0.25f * aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-            { { 0.25f, -0.25f * aspectRatio, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-            { { -0.25f, -0.25f * aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
+            { { -0.25f, 0.0f, -0.25f}, { 0.0f, 0.0f, 1.0f, 1.0f } },
+            { { 0.25f, 0.0f, -0.25f}, { 0.0f, 1.0f, 0.0f, 1.0f } },
+            { { 0.0f, 0.0f, 0.25f,}, { 1.0f, 0.0f, 0.0f, 1.0f } }
         };
 
         // It's bad to use an upload buffer for verts, but use one here for simplicity (more than one read?)
@@ -295,9 +298,16 @@ void D3D12Context::Draw()
 
     m_cmdList->SetGraphicsRootSignature(m_emptyRootSignature.Get());
 
-    static int frame = 0;
-    float scale = GetCurrentFrameTime();
-    m_cmdList->SetGraphicsRoot32BitConstant(0, *((UINT*)&scale), 0);
+    Vector3 vecEye(0.0f, -1.0f, 0.0f);
+    Vector3 vecTarget;
+    Vector3 vecUp(0.0f, 0.0f, 1.0f);
+    Camera cam(vecEye, vecTarget, vecUp, 0.1f, 100.0f, 90.0f);
+    Matrix4x4 matMVP;
+    cam.GetViewProjMatrix(matMVP);
+    Matrix4x4 matMVPTranspose;
+    matMVP.Transpose(matMVPTranspose);
+
+    m_cmdList->SetGraphicsRoot32BitConstants(0, sizeof(Matrix4x4) / 4, &matMVPTranspose, 0);
 
     m_cmdList->RSSetViewports(1, &m_viewport);
     m_cmdList->RSSetScissorRects(1, &m_scissorRect);
