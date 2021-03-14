@@ -26,7 +26,6 @@ VS_OUT HelloTriangleVS(VS_IN I)
 	VS_OUT O;
 	O.col = I.col;
 	O.pos = mul(mat, float4(I.pos, 1.0f));
-	O.pos /= O.pos.w;
 	return O;
 }
 

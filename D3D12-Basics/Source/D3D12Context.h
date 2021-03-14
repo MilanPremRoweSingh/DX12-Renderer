@@ -36,6 +36,10 @@ class D3D12Context
     ComPtr<ID3D12Fence> m_fence;
     UINT64 m_fenceValue;
 
+#ifdef _DEBUG
+    uint32 m_debugResourceIndex = 0;
+#endif
+
     // DXGI
     ComPtr<IDXGIFactory2> m_dxgiFactory2;
     ComPtr<IDXGISwapChain3> m_swapChain3;
@@ -50,6 +54,10 @@ public:
 
     void LoadInitialAssets();
 
+    void ExecuteCommandList();
+
+    void WaitForGPU();
+
     void Draw();
 
     void Present();
@@ -57,13 +65,17 @@ public:
  private:
 
      void CreateBuffer(
-        const D3D12_HEAP_PROPERTIES& heapProps,
-        uint32 size,
-        ID3D12Resource** ppBuffer);
+         const D3D12_HEAP_PROPERTIES& heapProps,
+         uint32 size,
+         D3D12_HEAP_FLAGS heapFlags,
+         D3D12_RESOURCE_STATES initialState,
+         ID3D12Resource** ppBuffer);
 
      void CreateBuffer(
          const D3D12_HEAP_PROPERTIES& heapProps,
          uint32 size,
-         ID3D12Resource** ppBuffer,
-         void* initialData);
+         D3D12_HEAP_FLAGS heapFlags,
+         D3D12_RESOURCE_STATES initialState,
+         void* initialData,
+         ID3D12Resource** ppBuffer);
 };

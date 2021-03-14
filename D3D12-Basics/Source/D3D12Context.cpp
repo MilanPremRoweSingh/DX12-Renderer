@@ -1,5 +1,9 @@
 #include "D3D12Context.h"
 
+#ifdef _DEBUG
+#include <sstream>
+#endif
+
 #include "d3dcompiler.h"
 #include "d3dx12.h"
 
@@ -150,11 +154,18 @@ void D3D12Context::InitialisePipeline()
     {
         ASSERT_SUCCEEDED(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_cmdAllocator)));
     }
+
+    // Create Fence
+    {
+        ASSERT_SUCCEEDED(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
+    }
 }
 
 void D3D12Context::CreateBuffer(
     const D3D12_HEAP_PROPERTIES& heapProps,
     uint32 size,
+    D3D12_HEAP_FLAGS heapFlags,
+    D3D12_RESOURCE_STATES initialState,
     ID3D12Resource** ppBuffer)
 {
     D3D12_RESOURCE_DESC resourceDesc = {};
@@ -172,29 +183,77 @@ void D3D12Context::CreateBuffer(
 
     ASSERT_SUCCEEDED(m_device->CreateCommittedResource(
         &heapProps,
-        D3D12_HEAP_FLAG_NONE,
+        heapFlags,
         &resourceDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ, // Required starting state of upload buffer
+        initialState, // Required starting state of upload buffer
         nullptr,
         IID_PPV_ARGS(ppBuffer)
     ));
+
+#ifdef _DEBUG
+    std::wstringstream ws;
+    ws << "Resource " << m_debugResourceIndex++;
+    (*ppBuffer)->SetName(ws.str().c_str());
+#endif
 }
 
 void D3D12Context::CreateBuffer(
     const D3D12_HEAP_PROPERTIES& heapProps,
     uint32 size,
-    ID3D12Resource** ppBuffer,
-    void* initialData)
+    D3D12_HEAP_FLAGS heapFlags,
+    D3D12_RESOURCE_STATES initialState,
+    void* initialData,
+    ID3D12Resource** ppBuffer)
 {
-    CreateBuffer(heapProps, size, ppBuffer);
+    CreateBuffer(heapProps, size, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, ppBuffer);
 
-    // Copy data into buffer
-    void* pBufferData;
+    // Create Intermediate Upload buffer
+    ComPtr<ID3D12Resource> uploadBuffer;
 
+    D3D12_HEAP_PROPERTIES uploadHeapProps = {};
+    uploadHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+    uploadHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    uploadHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+    CreateBuffer(uploadHeapProps, size, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &uploadBuffer);
+
+    // Copy data into upload buffer
+    void* pUploadBufferData;
     D3D12_RANGE range = { 0, 0 };
-    ASSERT_SUCCEEDED((*ppBuffer)->Map(0, &range, (void**)&pBufferData));
-    memcpy(pBufferData, initialData, size);
-    (*ppBuffer)->Unmap(0, nullptr);
+    ASSERT_SUCCEEDED(uploadBuffer->Map(0, &range, (void**)&pUploadBufferData));
+    memcpy(pUploadBufferData, initialData, size);
+    uploadBuffer->Unmap(0, nullptr);
+
+    // This is terrible, but for now we only have once command list so we have to reset it and execute it every time 
+    // we want to create a buffer with this method. Will add a copy command list so we don't have to reset it each time.
+    {
+        m_cmdList->Reset(m_cmdAllocator.Get(), NULL);
+
+        m_cmdList->CopyResource(*ppBuffer, uploadBuffer.Get());
+
+        if (initialState != D3D12_RESOURCE_STATE_COPY_DEST)
+        {
+            // Transition upload buffer to copy src
+            D3D12_RESOURCE_TRANSITION_BARRIER transition;
+            transition.pResource = *ppBuffer;
+            transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+            transition.StateAfter = initialState;
+            transition.Subresource = 0;
+
+            D3D12_RESOURCE_BARRIER barrier;
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Transition = transition;
+
+            m_cmdList->ResourceBarrier(1, &barrier);
+        }
+
+        ExecuteCommandList();
+        
+        // Have to wait for GPU because we aren't tracking upload buffers, and need to destroy it when this function returns
+        // Need to find a solution for this
+        WaitForGPU();
+    }
 }
 
 void D3D12Context::LoadInitialAssets()
@@ -259,7 +318,7 @@ void D3D12Context::LoadInitialAssets()
     // Create Command List
     {
         ASSERT_SUCCEEDED(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_cmdAllocator.Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_cmdList)));
-        m_cmdList->Close();
+        ASSERT_SUCCEEDED(m_cmdList->Close());
     }
 
     // Create Vertex Buffer
@@ -286,11 +345,11 @@ void D3D12Context::LoadInitialAssets()
 
         // It's bad to use an upload buffer for verts, but use one here for simplicity (more than one read?)
         D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
         heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
         heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-        CreateBuffer(heapProps, sizeof(vertsReal), &m_vertexBuffer, (void*)vertsReal);
+        CreateBuffer(heapProps, sizeof(vertsReal), D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)vertsReal, &m_vertexBuffer);
 
         m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
         m_vertexBufferView.StrideInBytes = sizeof(Vertex);
@@ -322,13 +381,13 @@ void D3D12Context::LoadInitialAssets()
 
         // Again, use an upload buffer for simplicity but probably not the best
         D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
         heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
         heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
         uint32 size = sizeof(indices);
 
-        CreateBuffer(heapProps, size, &m_indexBuffer, (void*)indices);
+        CreateBuffer(heapProps, sizeof(indices), D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)indices, &m_indexBuffer);
 
         m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
         m_indexBufferView.SizeInBytes = size;
@@ -337,8 +396,6 @@ void D3D12Context::LoadInitialAssets()
 
     // Create Fence and wait for upload
     {
-        ASSERT_SUCCEEDED(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
-
         const UINT64 fence = m_fenceValue++;
         ASSERT_SUCCEEDED(m_cmdQueue->Signal(m_fence.Get(), fence));
 
@@ -349,6 +406,25 @@ void D3D12Context::LoadInitialAssets()
                 WaitForSingleObject(m_fenceEvent, INFINITE);
             EngineLog("Upload Finished!");
         }
+    }
+}
+
+void D3D12Context::ExecuteCommandList()
+{
+    ASSERT_SUCCEEDED(m_cmdList->Close());
+    ID3D12CommandList* cmdLists[] = { m_cmdList.Get() };
+    m_cmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
+}
+
+void D3D12Context::WaitForGPU()
+{
+    const UINT64 fence = ++m_fenceValue;
+    ASSERT_SUCCEEDED(m_cmdQueue->Signal(m_fence.Get(), fence));
+
+    if (m_fence->GetCompletedValue() < m_fenceValue)
+    {
+        ASSERT_SUCCEEDED(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
+        WaitForSingleObject(m_fenceEvent, INFINITE);
     }
 }
 
@@ -421,26 +497,15 @@ void D3D12Context::Draw()
 
         m_cmdList->ResourceBarrier(1, &barrier);
     }
-
-    ASSERT_SUCCEEDED(m_cmdList->Close());
-
-    ID3D12CommandList* ppCmdLists[] = { m_cmdList.Get() };
-    m_cmdQueue->ExecuteCommandLists(_countof(ppCmdLists), ppCmdLists);
+    
+    ExecuteCommandList();
 }
 
 void D3D12Context::Present()
 {
     ASSERT_SUCCEEDED(m_swapChain3->Present(1, 0));
 
-    const UINT64 fence = m_fenceValue++;
-    ASSERT_SUCCEEDED(m_cmdQueue->Signal(m_fence.Get(), fence));
-
-    // Ideally, we'd just continue to prepare the next frame, but for simplicity just wait for it for now.
-    if (m_fence->GetCompletedValue() < fence)
-    {
-        ASSERT_SUCCEEDED(m_fence->SetEventOnCompletion(fence, m_fenceEvent))
-            WaitForSingleObject(m_fenceEvent, INFINITE);
-    }
+    WaitForGPU();
 
     m_frameIndex = m_swapChain3->GetCurrentBackBufferIndex();
 }
