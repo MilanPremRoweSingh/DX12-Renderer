@@ -299,7 +299,7 @@ void D3D12Context::LoadInitialAssets()
     
     // Create Index Buffer
     {
-        int32 indices[] = {
+        uint16 indices[] = {
         // Front Face
             0, 1, 4,
             4, 1, 5,
@@ -325,6 +325,8 @@ void D3D12Context::LoadInitialAssets()
         heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
         heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
         heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+        DXGI_FORMAT eFormat = DXGI_FORMAT_R16_UINT;
 
         uint32 dwSize = sizeof(indices);
 
