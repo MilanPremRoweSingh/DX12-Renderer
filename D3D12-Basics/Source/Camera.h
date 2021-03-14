@@ -12,7 +12,8 @@ public:
         Vector3& vecUp,
         float flNear,
         float flFar,
-        float flFOVInDeg);
+        float flFOVInDeg,
+        float flAspectRatio);
 
     void SetViewMatrix(
         const Matrix4x4& matView);
@@ -33,6 +34,7 @@ public:
         float flNeat, 
         float flFar, 
         float flFOVInDeg,
+        float flAspectRatio,
         Matrix4x4& projMatOut);
 
     static void sCalcLookAtMatrix(

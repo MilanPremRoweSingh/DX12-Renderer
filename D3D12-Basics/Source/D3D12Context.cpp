@@ -6,7 +6,7 @@
 #include "Shell.h"
 #include "Engine.h"
 
-// We won't want to include camera down the line, but set them as constant variables that the d3d12 context doesn't know anything about
+// We won't want to include camera down the line, but set matrices in constant buffers via some interface which doesn't 
 #include "Camera.h"
 
 #define ASSERT_SUCCEEDED(x) {HRESULT result = x; /*assert(SUCCEEDED(result));*/} 
@@ -354,7 +354,7 @@ void D3D12Context::Draw()
     Vector3 vecEye(radius * cosf(time), radius * sinf(time), 0.0f);
     Vector3 vecTarget;
     Vector3 vecUp(0.0f, 0.0f, 1.0f);
-    Camera cam(vecEye, vecTarget, vecUp, 0.1f, 100.0f, 90.0f);
+    Camera cam(vecEye, vecTarget, vecUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
     Matrix4x4 matMVP;
     cam.GetViewProjMatrix(matMVP);
     Matrix4x4 matMVPTranspose;
