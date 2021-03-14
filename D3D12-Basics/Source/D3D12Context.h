@@ -38,7 +38,7 @@ class D3D12Context
 
     // DXGI
     ComPtr<IDXGIFactory2> m_dxgiFactory2;
-    ComPtr<IDXGISwapChain3> m_SwapChain3;
+    ComPtr<IDXGISwapChain3> m_swapChain3;
 
     // Queried Info
     uint32 m_rtvDescriptorSize;

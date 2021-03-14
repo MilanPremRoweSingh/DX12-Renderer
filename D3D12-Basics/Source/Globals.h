@@ -6,4 +6,4 @@ struct Globals
     bool fGPUValidation = false;
 };
 
-extern Globals tGlobals;
+extern Globals globals;

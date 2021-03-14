@@ -14,14 +14,14 @@
 
 D3D12Context::D3D12Context()
 {
-    if (tGlobals.fD3DDebug)
+    if (globals.fD3DDebug)
     {
         // Enable CPU-level validation
         ID3D12Debug1* debugController;
         if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
         {
             debugController->EnableDebugLayer();
-            debugController->SetEnableGPUBasedValidation(tGlobals.fGPUValidation);
+            debugController->SetEnableGPUBasedValidation(globals.fGPUValidation);
             debugController->Release();
         }
     }
@@ -49,7 +49,7 @@ static void sCompileShader(const char* entryPoint, bool fIsVertexShader, ID3DBlo
     ComPtr<ID3DBlob> error;
 
     UINT compileFlags = 0;
-    if (tGlobals.fD3DDebug)
+    if (globals.fD3DDebug)
     {
         compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
     }
@@ -108,18 +108,18 @@ void D3D12Context::InitialisePipeline()
         desc.Scaling = DXGI_SCALING_NONE;
         desc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
 
-        ComPtr<IDXGISwapChain1> m_SwapChain31;
+        ComPtr<IDXGISwapChain1> swapChain;
         ASSERT_SUCCEEDED(m_dxgiFactory2->CreateSwapChainForHwnd(
             m_cmdQueue.Get(),
             GetNativeViewHandle(),
             &desc,
             NULL,
             NULL,
-            &m_SwapChain31));
+            &swapChain));
 
-        m_SwapChain31.As(&m_SwapChain3);
+        swapChain.As(&m_swapChain3);
 
-        m_frameIndex = m_SwapChain3->GetCurrentBackBufferIndex();
+        m_frameIndex = m_swapChain3->GetCurrentBackBufferIndex();
     }
 
     // Create RTV Descriptor Heap
@@ -140,7 +140,7 @@ void D3D12Context::InitialisePipeline()
 
         for (int32 i = 0; i < NUM_SWAP_CHAIN_BUFFERS; i++)
         {
-            ASSERT_SUCCEEDED(m_SwapChain3->GetBuffer(i, IID_PPV_ARGS(&m_renderTargets[i])));
+            ASSERT_SUCCEEDED(m_swapChain3->GetBuffer(i, IID_PPV_ARGS(&m_renderTargets[i])));
             m_device->CreateRenderTargetView(m_renderTargets[i].Get(), NULL, handle);
             handle.Offset(1, m_rtvDescriptorSize);
         }
@@ -326,15 +326,13 @@ void D3D12Context::LoadInitialAssets()
         heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
         heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-        DXGI_FORMAT eFormat = DXGI_FORMAT_R16_UINT;
+        uint32 size = sizeof(indices);
 
-        uint32 dwSize = sizeof(indices);
-
-        CreateBuffer(heapProps, dwSize, &m_indexBuffer, (void*)indices);
+        CreateBuffer(heapProps, size, &m_indexBuffer, (void*)indices);
 
         m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
-        m_indexBufferView.SizeInBytes = dwSize;
-        m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+        m_indexBufferView.SizeInBytes = size;
+        m_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
     }
 
     // Create Fence and wait for upload
@@ -364,10 +362,11 @@ void D3D12Context::Draw()
     float radius = 10.0f;
     float time = GetCurrentFrameTime();
 
-    Vector3 vecEye(radius * cosf(time), radius * sinf(time), 0.0f);
-    Vector3 vecTarget;
-    Vector3 vecUp(0.0f, 0.0f, 1.0f);
-    Camera cam(vecEye, vecTarget, vecUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
+    // This is terrible, but fine for now
+    Vector3 eyePos(radius * cosf(time), radius * sinf(time), 0.0f);
+    Vector3 targetPos;
+    Vector3 camUp(0.0f, 0.0f, 1.0f);
+    Camera cam(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
     Matrix4x4 matMVP;
     cam.GetViewProjMatrix(matMVP);
     Matrix4x4 matMVPTranspose;
@@ -407,7 +406,6 @@ void D3D12Context::Draw()
     m_cmdList->IASetIndexBuffer(&m_indexBufferView);
     m_cmdList->DrawIndexedInstanced(36, 1, 0, 0, 0);
 
-
     // Transition back buffer to present
     {
         D3D12_RESOURCE_TRANSITION_BARRIER transition;
@@ -432,7 +430,7 @@ void D3D12Context::Draw()
 
 void D3D12Context::Present()
 {
-    ASSERT_SUCCEEDED(m_SwapChain3->Present(1, 0));
+    ASSERT_SUCCEEDED(m_swapChain3->Present(1, 0));
 
     const UINT64 fence = m_fenceValue++;
     ASSERT_SUCCEEDED(m_cmdQueue->Signal(m_fence.Get(), fence));
@@ -444,5 +442,5 @@ void D3D12Context::Present()
             WaitForSingleObject(m_fenceEvent, INFINITE);
     }
 
-    m_frameIndex = m_SwapChain3->GetCurrentBackBufferIndex();
+    m_frameIndex = m_swapChain3->GetCurrentBackBufferIndex();
 }

@@ -18,13 +18,13 @@ static void sParseCmdLine()
         {
             if (wcscmp(plpArgs[i], L"-d3ddebug") == 0)
             {
-                tGlobals.fD3DDebug = true;
+                globals.fD3DDebug = true;
             }
 
             if (wcscmp(plpArgs[i], L"-gpuvalidation") == 0)
             {
-                tGlobals.fD3DDebug = true;
-                tGlobals.fGPUValidation = true;
+                globals.fD3DDebug = true;
+                globals.fGPUValidation = true;
             }
         }
     }
