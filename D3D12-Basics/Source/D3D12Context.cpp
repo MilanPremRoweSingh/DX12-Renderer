@@ -152,6 +152,51 @@ void D3D12Context::InitialisePipeline()
     }
 }
 
+void D3D12Context::CreateBuffer(
+    const D3D12_HEAP_PROPERTIES& heapProps,
+    uint32 size,
+    ID3D12Resource** ppBuffer)
+{
+    D3D12_RESOURCE_DESC resourceDesc = {};
+    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    resourceDesc.Width = size;
+    // The following are required for all buffers
+    resourceDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT; // 64KB
+    resourceDesc.Height = 1;
+    resourceDesc.DepthOrArraySize = 1;
+    resourceDesc.MipLevels = 1;
+    resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+    resourceDesc.SampleDesc.Count = 1;
+    resourceDesc.SampleDesc.Quality = 0;
+    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+    ASSERT_SUCCEEDED(m_device->CreateCommittedResource(
+        &heapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &resourceDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ, // Required starting state of upload buffer
+        nullptr,
+        IID_PPV_ARGS(ppBuffer)
+    ));
+}
+
+void D3D12Context::CreateBuffer(
+    const D3D12_HEAP_PROPERTIES& heapProps,
+    uint32 size,
+    ID3D12Resource** ppBuffer,
+    void* initialData)
+{
+    CreateBuffer(heapProps, size, ppBuffer);
+
+    // Copy data into buffer
+    void* pBufferData;
+
+    D3D12_RANGE range = { 0, 0 };
+    ASSERT_SUCCEEDED((*ppBuffer)->Map(0, &range, (void**)&pBufferData));
+    memcpy(pBufferData, initialData, size);
+    (*ppBuffer)->Unmap(0, nullptr);
+}
+
 void D3D12Context::LoadInitialAssets()
 {
     // Create empty root signature for shaders with no bound resources
@@ -227,60 +272,16 @@ void D3D12Context::LoadInitialAssets()
 
         const float aspectRatio = GetWindowAspectRatio();
 
-        Vertex verts[] = {
-        // Front Face
-            { { 1, -1, 1 }, { 1.0f, 0.0f, 1.0f, 1.0f } },
-            { { -1, -1, -1 }, { 0.0f, 0.0f, 0.0f, 1.0f } },
-            { { 1, -1, -1 }, { 1.0f, 0.0f, 0.0f, 1.0f } },
 
-            { { -1, -1, 1 }, { 0.0f, 0.0f, 1.0f, 1.0f } }, 
-            { { -1, -1, -1 }, { 0.0f, 0.0f, 0.0f, 1.0f } },
-            { { 1, -1, 1 }, { 1.0f, 0.0f, 1.0f, 1.0f } },
-            
-        // Left Face
-            { { 1, -1, 1 }, { 1.0f, 0.0f, 1.0f, 1.0f } },
-            { { 1, -1, -1 }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-            { { 1, 1, -1 }, { 1.0f, 1.0f, -1.0f, 1.0f } },
-
-            { { 1, -1, 1 }, { 1.0f, 0.0f, 1.0f, 1.0f } }, 
-            { { 1, 1, -1 }, { 1.0f, 1.0f, -1.0f, 1.0f } },
-            { { 1, 1, 1 }, { 1.0f, 1.0f, 1.0f, 1.0f } },
-
-        // Back Face
+        Vertex vertsReal[] = {
             { { 1, 1, 1 }, { 1.0f, 1.0f, 1.0f, 1.0f } },
             { { 1, 1, -1 }, { 1.0f, 1.0f, 0.0f, 1.0f } },
-            { { -1, 1, 1 }, { 0.0f, 1.0f, 1.0f, 1.0f } },
-
-            { { -1, 1, 1 }, { 0.0f, 1.0f, 1.0f, 1.0f } }, 
-            { { 1, 1, -1 }, { 1.0f, 1.0f, 0.0f, 1.0f } },
-            { { -1, 1, -1 }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-            
-        // Right Face
-            { { -1, 1, 1 }, { 0.0f, 1.0f, 1.0f, 1.0f } },
-            { { -1, 1, -1 }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-            { { -1, -1, -1 }, { 0.0f, 0.0f, 0.0f, 1.0f } },
-
-            { { -1, -1, 1 }, { 0.0f, 0.0f, 1.0f, 1.0f } }, 
-            { { -1, 1, 1 }, { 0.0f, 1.0f, 1.0f, 1.0f } },
-            { { -1, -1, -1 }, { 0.0f, 0.0f, 0.0f, 1.0f } },
-            
-        // Top Face
-            { { 1, 1, 1 }, { 0.0f, 0.0f, 0.0f, 1.0f } },
-            { { -1, 1, 1 }, { 0.0f, 1.0f, 1.0f, 1.0f } },
             { { 1, -1, 1 }, { 1.0f, 0.0f, 1.0f, 1.0f } },
-
-            { { -1, 1, 1 }, { 0.0f, 1.0f, 1.0f, 1.0f } }, 
+            { { 1, -1, -1 }, { 1.0f, 0.0f, 0.0f, 1.0f } },
+            { { -1, 1, 1 }, { 0.0f, 1.0f, 1.0f, 1.0f } },
+            { { -1, 1, -1 }, { 0.0f, 1.0f, 0.0f, 1.0f } },
             { { -1, -1, 1 }, { 0.0f, 0.0f, 1.0f, 1.0f } },
-            { { 1, -1, 1 }, { 1.0f, 0.0f, 1.0f, 1.0f } },
-            
-        // Bottom Face
-            { { 1, 1, -1 }, { 1.0f, 1.0f, 0.0f, 1.0f } },
-            { { 1, -1, -1 }, { 1.0f, 0.0f, 0.0f, 1.0f } },
             { { -1, -1, -1 }, { 0.0f, 0.0f, 0.0f, 1.0f } },
-
-            { { -1, -1, -1 }, { 0.0f, 0.0f, 0.0f, 1.0f } }, 
-            { { -1, 1, -1 }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-            { { 1, 1, -1 }, { 1.0f, 1.0f, 0.0f, 1.0f } },
         };
 
         // It's bad to use an upload buffer for verts, but use one here for simplicity (more than one read?)
@@ -289,39 +290,49 @@ void D3D12Context::LoadInitialAssets()
         heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
         heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-        D3D12_RESOURCE_DESC resourceDesc = {};
-        resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        resourceDesc.Width = sizeof(verts);
-        // The following are required for all buffers
-        resourceDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT; // 64KB
-        resourceDesc.Height = 1;
-        resourceDesc.DepthOrArraySize = 1;
-        resourceDesc.MipLevels = 1;
-        resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-        resourceDesc.SampleDesc.Count = 1;
-        resourceDesc.SampleDesc.Quality = 0;
-        resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-        ASSERT_SUCCEEDED(m_device->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &resourceDesc,
-            D3D12_RESOURCE_STATE_GENERIC_READ, // Required starting state of upload buffer
-            nullptr,
-            IID_PPV_ARGS(&m_vertexBuffer)
-        ));
-
-        // Copy data into buffer
-        UINT8* pVertexData;
-
-        D3D12_RANGE range = { 0, 0 };
-        ASSERT_SUCCEEDED(m_vertexBuffer->Map(0, &range, (void**)&pVertexData));
-        memcpy(pVertexData, verts, sizeof(verts));
-        m_vertexBuffer->Unmap(0, nullptr);
+        CreateBuffer(heapProps, sizeof(vertsReal), &m_vertexBuffer, (void*)vertsReal);
 
         m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
         m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-        m_vertexBufferView.SizeInBytes = sizeof(verts);
+        m_vertexBufferView.SizeInBytes = sizeof(vertsReal);
+    }
+    
+    // Create Index Buffer
+    {
+        int32 indices[] = {
+        // Front Face
+            0, 1, 4,
+            4, 1, 5,
+        // Right Face
+            2, 3, 1,
+            2, 1, 0,
+        // Back Face
+            2, 7, 3,
+            6, 7, 2,
+        // Left Face
+            4, 5, 7,
+            6, 4, 7,
+        // Top Face
+            0, 4, 2,
+            4, 6, 2,
+        // Bottom Face
+            1, 3, 7,
+            7, 5 ,1,
+        };
+
+        // Again, use an upload buffer for simplicity but probably not the best
+        D3D12_HEAP_PROPERTIES heapProps = {};
+        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+        uint32 dwSize = sizeof(indices);
+
+        CreateBuffer(heapProps, dwSize, &m_indexBuffer, (void*)indices);
+
+        m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
+        m_indexBufferView.SizeInBytes = dwSize;
+        m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
     }
 
     // Create Fence and wait for upload
@@ -391,7 +402,8 @@ void D3D12Context::Draw()
     m_cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-    m_cmdList->DrawInstanced(36, 1, 0, 0);
+    m_cmdList->IASetIndexBuffer(&m_indexBufferView);
+    m_cmdList->DrawIndexedInstanced(36, 1, 0, 0, 0);
 
 
     // Transition back buffer to present

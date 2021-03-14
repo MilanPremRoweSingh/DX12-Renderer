@@ -24,6 +24,9 @@ class D3D12Context
     ComPtr<ID3D12Resource> m_vertexBuffer;
     D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 
+    ComPtr<ID3D12Resource> m_indexBuffer;
+    D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+
     ComPtr<ID3D12RootSignature> m_emptyRootSignature;
 
     ComPtr<ID3D12PipelineState> m_pipelineState;
@@ -50,4 +53,17 @@ public:
     void Draw();
 
     void Present();
+
+ private:
+
+     void CreateBuffer(
+        const D3D12_HEAP_PROPERTIES& heapProps,
+        uint32 size,
+        ID3D12Resource** ppBuffer);
+
+     void CreateBuffer(
+         const D3D12_HEAP_PROPERTIES& heapProps,
+         uint32 size,
+         ID3D12Resource** ppBuffer,
+         void* initialData);
 };
