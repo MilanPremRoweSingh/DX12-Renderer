@@ -1,20 +1,13 @@
 #include "D3D12Context.h"
 
-#ifdef _DEBUG
-#include <sstream>
-#endif
-
+#include "D3D12Header.h"   
 #include "d3dcompiler.h"
-#include "d3dx12.h"
 
 #include "Shell.h"
 #include "Engine.h"
 
 // We won't want to include camera down the line, but set matrices in constant buffers via some interface which doesn't 
 #include "Camera.h"
-
-#define ASSERT_SUCCEEDED(x) {HRESULT result = x; /*assert(SUCCEEDED(result));*/} 
-
 
 D3D12Context::D3D12Context()
 {
@@ -30,6 +23,8 @@ D3D12Context::D3D12Context()
         }
     }
 
+    m_device = new Device();
+
     m_viewport = {};
     m_viewport.MinDepth = 0.0f;
     m_viewport.MaxDepth = 1.0f;
@@ -42,11 +37,15 @@ D3D12Context::D3D12Context()
     m_scissorRect.top = 0;
     m_scissorRect.bottom = GetWindowHeight();
 
-
     InitialisePipeline();
-
     LoadInitialAssets();
 }
+
+D3D12Context::~D3D12Context()
+{
+    delete m_device;
+}
+
 
 static void sCompileShader(const char* entryPoint, bool fIsVertexShader, ID3DBlob** shaderBlob)
 {
@@ -80,10 +79,6 @@ static void sCompileShader(const char* entryPoint, bool fIsVertexShader, ID3DBlo
 
 void D3D12Context::InitialisePipeline()
 {
-    // Create Device
-    {
-        ASSERT_SUCCEEDED(D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_device)));
-    }
 
     // Create Command Queue
     {
@@ -91,7 +86,7 @@ void D3D12Context::InitialisePipeline()
         desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
 
-        ASSERT_SUCCEEDED(m_device->CreateCommandQueue(&desc, IID_PPV_ARGS(&m_cmdQueue)));
+        m_device->CreateCommandQueue(desc, m_cmdQueue.GetAddressOf());
     }
 
     // Create Swapchain
@@ -133,13 +128,11 @@ void D3D12Context::InitialisePipeline()
         desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
         desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
-        ASSERT_SUCCEEDED(m_device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_rtvDescriptorHeap)));
+        m_device->CreateDescriptorHeap(desc, &m_rtvDescriptorHeap, m_rtvDescriptorSize);
     }
 
     // Create RTV Descriptors
     {
-        m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
         CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 0, m_rtvDescriptorSize);
 
         for (int32 i = 0; i < NUM_SWAP_CHAIN_BUFFERS; i++)
@@ -150,110 +143,9 @@ void D3D12Context::InitialisePipeline()
         }
     }
 
-    // Create Command Allocator
-    {
-        ASSERT_SUCCEEDED(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_cmdAllocator)));
-    }
-
-    // Create Fence
-    {
-        ASSERT_SUCCEEDED(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
-    }
-}
-
-void D3D12Context::CreateBuffer(
-    const D3D12_HEAP_PROPERTIES& heapProps,
-    uint32 size,
-    D3D12_HEAP_FLAGS heapFlags,
-    D3D12_RESOURCE_STATES initialState,
-    ID3D12Resource** ppBuffer)
-{
-    D3D12_RESOURCE_DESC resourceDesc = {};
-    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    resourceDesc.Width = size;
-    // The following are required for all buffers
-    resourceDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT; // 64KB
-    resourceDesc.Height = 1;
-    resourceDesc.DepthOrArraySize = 1;
-    resourceDesc.MipLevels = 1;
-    resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-    resourceDesc.SampleDesc.Count = 1;
-    resourceDesc.SampleDesc.Quality = 0;
-    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-    ASSERT_SUCCEEDED(m_device->CreateCommittedResource(
-        &heapProps,
-        heapFlags,
-        &resourceDesc,
-        initialState, // Required starting state of upload buffer
-        nullptr,
-        IID_PPV_ARGS(ppBuffer)
-    ));
-
-#ifdef _DEBUG
-    std::wstringstream ws;
-    ws << "Resource " << m_debugResourceIndex++;
-    (*ppBuffer)->SetName(ws.str().c_str());
-#endif
-}
-
-void D3D12Context::CreateBuffer(
-    const D3D12_HEAP_PROPERTIES& heapProps,
-    uint32 size,
-    D3D12_HEAP_FLAGS heapFlags,
-    D3D12_RESOURCE_STATES initialState,
-    void* initialData,
-    ID3D12Resource** ppBuffer)
-{
-    CreateBuffer(heapProps, size, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, ppBuffer);
-
-    // Create Intermediate Upload buffer
-    ComPtr<ID3D12Resource> uploadBuffer;
-
-    D3D12_HEAP_PROPERTIES uploadHeapProps = {};
-    uploadHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-    uploadHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-    uploadHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-
-    CreateBuffer(uploadHeapProps, size, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &uploadBuffer);
-
-    // Copy data into upload buffer
-    void* pUploadBufferData;
-    D3D12_RANGE range = { 0, 0 };
-    ASSERT_SUCCEEDED(uploadBuffer->Map(0, &range, (void**)&pUploadBufferData));
-    memcpy(pUploadBufferData, initialData, size);
-    uploadBuffer->Unmap(0, nullptr);
-
-    // This is terrible, but for now we only have once command list so we have to reset it and execute it every time 
-    // we want to create a buffer with this method. Will add a copy command list so we don't have to reset it each time.
-    {
-        m_cmdList->Reset(m_cmdAllocator.Get(), NULL);
-
-        m_cmdList->CopyResource(*ppBuffer, uploadBuffer.Get());
-
-        if (initialState != D3D12_RESOURCE_STATE_COPY_DEST)
-        {
-            // Transition upload buffer to copy src
-            D3D12_RESOURCE_TRANSITION_BARRIER transition;
-            transition.pResource = *ppBuffer;
-            transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-            transition.StateAfter = initialState;
-            transition.Subresource = 0;
-
-            D3D12_RESOURCE_BARRIER barrier;
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.Transition = transition;
-
-            m_cmdList->ResourceBarrier(1, &barrier);
-        }
-
-        ExecuteCommandList();
-        
-        // Have to wait for GPU because we aren't tracking upload buffers, and need to destroy it when this function returns
-        // Need to find a solution for this
-        WaitForGPU();
-    }
+    m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, &m_cmdAllocator);
+    
+    m_device->CreateFence(0, &m_fence);
 }
 
 void D3D12Context::LoadInitialAssets()
@@ -279,7 +171,7 @@ void D3D12Context::LoadInitialAssets()
         ComPtr<ID3DBlob> error;
         ASSERT_SUCCEEDED(D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1_0, &signature, &error));
 
-        m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_emptyRootSignature));
+        m_device->CreateRootSignature(signature.Get(), &m_emptyRootSignature);
     }
 
     // Compile Shaders and create PSO
@@ -312,12 +204,12 @@ void D3D12Context::LoadInitialAssets()
         desc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
         desc.SampleDesc.Count = 1;
 
-        ASSERT_SUCCEEDED(m_device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&m_pipelineState)));
+        m_device->CreateGraphicsPipelineState(desc, &m_pipelineState);
     }
 
     // Create Command List
     {
-        ASSERT_SUCCEEDED(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_cmdAllocator.Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_cmdList)));
+        m_device->CreateGraphicsCommandList(m_cmdAllocator.Get(), m_pipelineState.Get(), &m_cmdList);
         ASSERT_SUCCEEDED(m_cmdList->Close());
     }
 
@@ -328,9 +220,6 @@ void D3D12Context::LoadInitialAssets()
             float pos[3];
             float col[4];
         };
-
-        const float aspectRatio = GetWindowAspectRatio();
-
 
         Vertex vertsReal[] = {
             { { 1, 1, 1 }, { 1.0f, 1.0f, 1.0f, 1.0f } },
@@ -508,4 +397,64 @@ void D3D12Context::Present()
     WaitForGPU();
 
     m_frameIndex = m_swapChain3->GetCurrentBackBufferIndex();
+}
+
+
+void D3D12Context::CreateBuffer(
+    const D3D12_HEAP_PROPERTIES& heapProps,
+    uint32 size,
+    D3D12_HEAP_FLAGS heapFlags,
+    D3D12_RESOURCE_STATES initialState,
+    void* initialData,
+    ID3D12Resource** ppBuffer)
+{
+    m_device->CreateBuffer(heapProps, size, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, ppBuffer);
+
+    // Create Intermediate Upload buffer
+    ComPtr<ID3D12Resource> uploadBuffer;
+
+    D3D12_HEAP_PROPERTIES uploadHeapProps = {};
+    uploadHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+    uploadHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    uploadHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+    m_device->CreateBuffer(uploadHeapProps, size, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &uploadBuffer);
+
+    // Copy data into upload buffer
+    void* pUploadBufferData;
+    D3D12_RANGE range = { 0, 0 };
+    ASSERT_SUCCEEDED(uploadBuffer->Map(0, &range, (void**)&pUploadBufferData));
+    memcpy(pUploadBufferData, initialData, size);
+    uploadBuffer->Unmap(0, nullptr);
+
+    // This is terrible, but for now we only have once command list so we have to reset it and execute it every time 
+    // we want to create a buffer with this method. Will add a copy command list so we don't have to reset it each time.
+    {
+        m_cmdList->Reset(m_cmdAllocator.Get(), NULL);
+
+        m_cmdList->CopyResource(*ppBuffer, uploadBuffer.Get());
+
+        if (initialState != D3D12_RESOURCE_STATE_COPY_DEST)
+        {
+            // Transition upload buffer to copy src
+            D3D12_RESOURCE_TRANSITION_BARRIER transition;
+            transition.pResource = *ppBuffer;
+            transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+            transition.StateAfter = initialState;
+            transition.Subresource = 0;
+
+            D3D12_RESOURCE_BARRIER barrier;
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Transition = transition;
+
+            m_cmdList->ResourceBarrier(1, &barrier);
+        }
+
+        ExecuteCommandList();
+
+        // Have to wait for GPU because we aren't tracking upload buffers, and need to destroy it when this function returns
+        // Need to find a solution for this
+        WaitForGPU();
+    }
 }

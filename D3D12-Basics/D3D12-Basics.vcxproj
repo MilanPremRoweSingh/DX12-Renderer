@@ -156,6 +156,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Device.cpp" />
     <ClCompile Include="Source\Camera.cpp" />
     <ClCompile Include="Source\D3D12Context.cpp" />
     <ClCompile Include="Source\Engine.cpp">
@@ -166,8 +167,11 @@
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Renderer.cpp" />
     <ClCompile Include="Source\Shell.cpp" />
+    <ClCompile Include="Source\UploadStream.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\D3D12Header.h" />
+    <ClInclude Include="Source\Device.h" />
     <ClInclude Include="Source\Camera.h" />
     <ClInclude Include="Source\D3D12Context.h" />
     <ClInclude Include="Source\Engine.h" />
@@ -176,6 +180,7 @@
     <ClInclude Include="Source\Renderer.h" />
     <ClInclude Include="Source\Shell.h" />
     <ClInclude Include="Source\Types.h" />
+    <ClInclude Include="Source\UploadStream.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
