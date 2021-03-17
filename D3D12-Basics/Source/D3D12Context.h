@@ -3,6 +3,7 @@
 #include "Renderer.h"
 #include "D3D12Header.h"
 #include "Device.h"
+#include "UploadStream.h"
 
 #include "dxgi1_6.h"
 
@@ -55,6 +56,8 @@ public:
      ComPtr<ID3D12RootSignature> m_emptyRootSignature;
 
      ComPtr<ID3D12PipelineState> m_pipelineState;
+
+     UploadStream* m_uploadStream;
 
      uint32 m_frameIndex = 0;
      HANDLE m_fenceEvent;

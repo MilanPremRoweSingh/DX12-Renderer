@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Device.h"
+
 #include <d3d12.h>
 #include <wrl/client.h>
 
@@ -8,26 +10,47 @@
 using Microsoft::WRL::ComPtr;
 
 // For now, this will just be a page based linear allocator
-// Maybe it would be worth having pages which allocate linearly that are stored in a heap, but this will be fine to start
+// Maybe it would be worth having pages which allocate linearly that are stored in a heap, but this will be fine to start (or that's too slow)
+// Having a 'destruction queue' or soemthing like that could be interesting
 class UploadStream
 {
-    UploadStream(ID3D12Device* device, uint32 pageSize = _2MB);
+public:
+    struct Allocation
+    {
+        // Afaik you have to have a pointer to the buffer itself to be able to copy from it, so allocations must track the resource they came from
+        ID3D12Resource* buffer;
+        size_t offset;
+        void* cpuAddr;
+    };
     
+    UploadStream(Device* device, size_t pageSize = _2MB);
+
+    Allocation Allocate(size_t size);
+
+    void ResetAllocations();
 
 private:
     struct Page
     {
-        ComPtr<ID3D12Resource> m_pageBuffer;
-        uint32 m_offset;
-        uint32 m_size;
+        ComPtr<ID3D12Resource> pageBuffer;
+        void* cpuAddr;
+        size_t offset;
+        size_t pageSize;
 
-        Page();
+        Page() = delete;
+        Page(size_t _pageSize, ID3D12Resource* _pageBuffer);
+        ~Page();
+
+        bool Allocate(size_t size, Allocation& allocOut);
+
+        void Reset();
     };
 
-    ID3D12Device* m_device;
+    Device* m_device;
+
+    Page& AllocatePage();
 
     std::list<Page> m_pages;
-    uint32 m_pageSize;
-
+    size_t m_pageSize;
 };
 

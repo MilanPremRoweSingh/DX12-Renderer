@@ -76,7 +76,7 @@ void Device::CreateFence(
 
 void Device::CreateBuffer(
     const D3D12_HEAP_PROPERTIES& heapProps,
-    uint32 size,
+    size_t size,
     D3D12_HEAP_FLAGS heapFlags,
     D3D12_RESOURCE_STATES initialState,
     ID3D12Resource** ppBuffer)

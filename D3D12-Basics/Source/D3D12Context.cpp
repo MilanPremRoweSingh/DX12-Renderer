@@ -37,12 +37,15 @@ D3D12Context::D3D12Context()
     m_scissorRect.top = 0;
     m_scissorRect.bottom = GetWindowHeight();
 
+    m_uploadStream = new UploadStream(m_device);
+
     InitialisePipeline();
     LoadInitialAssets();
 }
 
 D3D12Context::~D3D12Context()
 {
+    delete m_uploadStream;
     delete m_device;
 }
 
@@ -210,7 +213,6 @@ void D3D12Context::LoadInitialAssets()
     // Create Command List
     {
         m_device->CreateGraphicsCommandList(m_cmdAllocator.Get(), m_pipelineState.Get(), &m_cmdList);
-        ASSERT_SUCCEEDED(m_cmdList->Close());
     }
 
     // Create Vertex Buffer
@@ -232,7 +234,6 @@ void D3D12Context::LoadInitialAssets()
             { { -1, -1, -1 }, { 0.0f, 0.0f, 0.0f, 1.0f } },
         };
 
-        // It's bad to use an upload buffer for verts, but use one here for simplicity (more than one read?)
         D3D12_HEAP_PROPERTIES heapProps = {};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
         heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -282,6 +283,9 @@ void D3D12Context::LoadInitialAssets()
         m_indexBufferView.SizeInBytes = size;
         m_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
     }
+
+    // For buffer upload
+    ExecuteCommandList();
 
     // Create Fence and wait for upload
     {
@@ -397,6 +401,8 @@ void D3D12Context::Present()
     WaitForGPU();
 
     m_frameIndex = m_swapChain3->GetCurrentBackBufferIndex();
+
+    m_uploadStream->ResetAllocations();
 }
 
 
@@ -420,41 +426,22 @@ void D3D12Context::CreateBuffer(
 
     m_device->CreateBuffer(uploadHeapProps, size, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &uploadBuffer);
 
-    // Copy data into upload buffer
-    void* pUploadBufferData;
-    D3D12_RANGE range = { 0, 0 };
-    ASSERT_SUCCEEDED(uploadBuffer->Map(0, &range, (void**)&pUploadBufferData));
-    memcpy(pUploadBufferData, initialData, size);
-    uploadBuffer->Unmap(0, nullptr);
-
-    // This is terrible, but for now we only have once command list so we have to reset it and execute it every time 
-    // we want to create a buffer with this method. Will add a copy command list so we don't have to reset it each time.
+    UploadStream::Allocation uploadBufferAlloc = m_uploadStream->Allocate(size);
+    memcpy(uploadBufferAlloc.cpuAddr, initialData, size);    
+    m_cmdList->CopyBufferRegion(*ppBuffer, 0, uploadBufferAlloc.buffer, uploadBufferAlloc.offset, size);
+    if (initialState != D3D12_RESOURCE_STATE_COPY_DEST)
     {
-        m_cmdList->Reset(m_cmdAllocator.Get(), NULL);
+        D3D12_RESOURCE_TRANSITION_BARRIER transition;
+        transition.pResource = *ppBuffer;
+        transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+        transition.StateAfter = initialState;
+        transition.Subresource = 0;
 
-        m_cmdList->CopyResource(*ppBuffer, uploadBuffer.Get());
+        D3D12_RESOURCE_BARRIER barrier;
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition = transition;
 
-        if (initialState != D3D12_RESOURCE_STATE_COPY_DEST)
-        {
-            // Transition upload buffer to copy src
-            D3D12_RESOURCE_TRANSITION_BARRIER transition;
-            transition.pResource = *ppBuffer;
-            transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-            transition.StateAfter = initialState;
-            transition.Subresource = 0;
-
-            D3D12_RESOURCE_BARRIER barrier;
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.Transition = transition;
-
-            m_cmdList->ResourceBarrier(1, &barrier);
-        }
-
-        ExecuteCommandList();
-
-        // Have to wait for GPU because we aren't tracking upload buffers, and need to destroy it when this function returns
-        // Need to find a solution for this
-        WaitForGPU();
+        m_cmdList->ResourceBarrier(1, &barrier);
     }
 }
