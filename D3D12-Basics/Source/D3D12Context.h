@@ -34,6 +34,17 @@ public:
         void* initialData,
         ID3D12Resource** ppBuffer);
 
+    void CreateTexture2D(
+        const D3D12_HEAP_PROPERTIES& heapProps,
+        uint32 width,
+        uint32 height,
+        uint16 mipLevels,
+        DXGI_FORMAT format,
+        D3D12_HEAP_FLAGS heapFlags,
+        D3D12_RESOURCE_STATES initialState,
+        void* initialData,
+        ID3D12Resource** ppTexture);
+
  private:
 
      D3D12_VIEWPORT m_viewport;
