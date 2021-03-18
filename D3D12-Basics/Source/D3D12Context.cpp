@@ -151,31 +151,62 @@ void D3D12Context::InitialisePipeline()
     m_device->CreateFence(0, &m_fence);
 }
 
+void D3D12Context::CreateDefaultRootSignature()
+{
+    D3D12_ROOT_SIGNATURE_DESC desc = {};
+
+    D3D12_ROOT_PARAMETER params[2];
+    D3D12_ROOT_PARAMETER& matViewParam = params[0];
+    matViewParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+    matViewParam.Constants.Num32BitValues = sizeof(Matrix4x4) / 4;
+    matViewParam.Constants.RegisterSpace = 0;
+    matViewParam.Constants.ShaderRegister = 0;
+    matViewParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+    D3D12_ROOT_DESCRIPTOR_TABLE table = {};
+
+    D3D12_DESCRIPTOR_RANGE range = {};
+    range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    range.NumDescriptors = 1;
+    range.BaseShaderRegister = 0;
+    range.OffsetInDescriptorsFromTableStart = 0;
+
+    table.NumDescriptorRanges = 1;
+    table.pDescriptorRanges = &range;
+
+    D3D12_ROOT_PARAMETER& textureTableParam = params[1];
+    textureTableParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    textureTableParam.DescriptorTable = table;
+    textureTableParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+    D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+    samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    samplerDesc.MipLODBias = 0.0f;
+    samplerDesc.MinLOD = 0;
+    samplerDesc.MaxLOD = 0;
+    samplerDesc.ShaderRegister = 0;
+    samplerDesc.RegisterSpace = 0;
+    samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+    desc.NumParameters = 2;
+    desc.pParameters = params;
+    desc.NumStaticSamplers = 1;
+    desc.pStaticSamplers = &samplerDesc;
+    desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+    ComPtr<ID3DBlob> signature;
+    ComPtr<ID3DBlob> error;
+    ASSERT_SUCCEEDED(D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1_0, &signature, &error));
+
+    m_device->CreateRootSignature(signature.Get(), &m_defaultRootSignature);
+}
+
 void D3D12Context::LoadInitialAssets()
 {
-    // Create empty root signature for shaders with no bound resources
-    {
-        D3D12_ROOT_SIGNATURE_DESC desc;
-        
-        D3D12_ROOT_PARAMETER rootParam;
-        rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-        rootParam.Constants.Num32BitValues = sizeof(Matrix4x4) / 4;
-        rootParam.Constants.RegisterSpace = 0;
-        rootParam.Constants.ShaderRegister = 0;
-        rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL; 
-
-        desc.NumParameters = 1;
-        desc.pParameters = &rootParam;
-        desc.NumStaticSamplers = 0;
-        desc.pStaticSamplers = nullptr;
-        desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-
-        ComPtr<ID3DBlob> signature;
-        ComPtr<ID3DBlob> error;
-        ASSERT_SUCCEEDED(D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1_0, &signature, &error));
-
-        m_device->CreateRootSignature(signature.Get(), &m_emptyRootSignature);
-    }
+    CreateDefaultRootSignature();
 
     // Compile Shaders and create PSO
     ComPtr<ID3DBlob> vertexShader;
@@ -193,7 +224,7 @@ void D3D12Context::LoadInitialAssets()
         };
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
-        desc.pRootSignature = m_emptyRootSignature.Get();
+        desc.pRootSignature = m_defaultRootSignature.Get();
         desc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
         desc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
         desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
@@ -286,20 +317,7 @@ void D3D12Context::LoadInitialAssets()
 
     // For buffer upload
     ExecuteCommandList();
-
-    // Create Fence and wait for upload
-    {
-        const UINT64 fence = m_fenceValue++;
-        ASSERT_SUCCEEDED(m_cmdQueue->Signal(m_fence.Get(), fence));
-
-        if (m_fence->GetCompletedValue() < fence)
-        {
-            EngineLog("Waiting for Vertex Buffer Upload");
-            ASSERT_SUCCEEDED(m_fence->SetEventOnCompletion(fence, m_fenceEvent))
-                WaitForSingleObject(m_fenceEvent, INFINITE);
-            EngineLog("Upload Finished!");
-        }
-    }
+    WaitForGPU();
 }
 
 void D3D12Context::ExecuteCommandList()
@@ -326,7 +344,7 @@ void D3D12Context::Draw()
     ASSERT_SUCCEEDED(m_cmdAllocator->Reset());
     ASSERT_SUCCEEDED(m_cmdList->Reset(m_cmdAllocator.Get(), m_pipelineState.Get()));
 
-    m_cmdList->SetGraphicsRootSignature(m_emptyRootSignature.Get());
+    m_cmdList->SetGraphicsRootSignature(m_defaultRootSignature.Get());
 
     float radius = 10.0f;
     float time = GetCurrentFrameTime();

@@ -4,6 +4,9 @@ cbuffer Constants0
 	float4x4 mat;
 };
 
+SamplerState Sampler;
+Texture2D Texture;
+
 struct VS_IN
 {
 	float3 pos : POSITION;
@@ -32,6 +35,6 @@ VS_OUT HelloTriangleVS(VS_IN I)
 PS_OUT HelloTrianglePS(VS_OUT I)
 {
 	PS_OUT O;
-	O.col = I.col;	
+	O.col = I.col * Texture.Sample(Sampler, float2(0.5f, 0.5f));	
 	return O;
 }

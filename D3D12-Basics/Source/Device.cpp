@@ -55,7 +55,7 @@ void Device::CreateRootSignature(
     ID3DBlob* signatureBlob,
     ID3D12RootSignature** rootSignature)
 {
-    m_device->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(rootSignature));
+    ASSERT_SUCCEEDED(m_device->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(rootSignature)));
 }
 
 

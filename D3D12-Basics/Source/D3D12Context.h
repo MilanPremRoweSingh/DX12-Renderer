@@ -14,17 +14,23 @@ public:
     D3D12Context();
     ~D3D12Context();
 
-    void InitialisePipeline();
+    void InitialisePipeline(
+        void);
 
-    void LoadInitialAssets();
+    void LoadInitialAssets(
+        void);
 
-    void ExecuteCommandList();
+    void ExecuteCommandList(
+        void);
 
-    void WaitForGPU();
+    void WaitForGPU(
+        void);
 
-    void Draw();
+    void Draw(
+        void);
 
-    void Present();
+    void Present(
+        void);
 
     void CreateBuffer(
         const D3D12_HEAP_PROPERTIES& heapProps,
@@ -47,6 +53,9 @@ public:
 
  private:
 
+     void CreateDefaultRootSignature(
+         void);
+
      D3D12_VIEWPORT m_viewport;
      D3D12_RECT  m_scissorRect;
 
@@ -64,7 +73,7 @@ public:
      ComPtr<ID3D12Resource> m_indexBuffer;
      D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 
-     ComPtr<ID3D12RootSignature> m_emptyRootSignature;
+     ComPtr<ID3D12RootSignature> m_defaultRootSignature;
 
      ComPtr<ID3D12PipelineState> m_pipelineState;
 
