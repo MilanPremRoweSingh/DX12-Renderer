@@ -1,5 +1,7 @@
 #include "UploadStream.h"
 
+#include "Utils.h"
+
 UploadStream::UploadStream(Device* device, size_t pageSize)
 {
     assert(device != nullptr);
@@ -25,12 +27,17 @@ UploadStream::Page& UploadStream::AllocatePage()
 
 UploadStream::Allocation UploadStream::Allocate(size_t size)
 {
+    return AllocateAligned(size, 1);
+}
+
+UploadStream::Allocation UploadStream::AllocateAligned(size_t size, size_t align)
+{
     Page& page = m_pages.back();
     Allocation alloc;
-    if (!page.Allocate(size, alloc))
+    if (!page.Allocate(size, align, alloc))
     {
         page = AllocatePage();
-        assert(page.Allocate(size, alloc));
+        assert(page.Allocate(size, align, alloc));
     }
     return alloc;
 }
@@ -63,16 +70,18 @@ void UploadStream::Page::Reset()
     offset = 0;
 }
 
-bool UploadStream::Page::Allocate(size_t size, Allocation& allocOut)
+bool UploadStream::Page::Allocate(size_t size, size_t align, Allocation& allocOut)
 {
-    if (size + offset > pageSize)
+    size_t alignedOffset = Utils::AlignUp(offset, align);
+    size_t nextOffset = alignedOffset + size;
+    if (nextOffset > pageSize)
     {
         return false;
     }
     allocOut.buffer = pageBuffer.Get();
     allocOut.cpuAddr = (void*)((INT8*)cpuAddr + offset);
-    allocOut.offset = offset;
-    offset += size;
+    allocOut.offset = alignedOffset;
+    offset = nextOffset;
 
     return true;
 }

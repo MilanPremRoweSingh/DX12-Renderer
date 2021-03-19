@@ -26,6 +26,7 @@ public:
     UploadStream(Device* device, size_t pageSize = _2MB);
 
     Allocation Allocate(size_t size);
+    Allocation AllocateAligned(size_t size, size_t align);
 
     void ResetAllocations();
 
@@ -41,7 +42,7 @@ private:
         Page(size_t _pageSize, ID3D12Resource* _pageBuffer);
         ~Page();
 
-        bool Allocate(size_t size, Allocation& allocOut);
+        bool Allocate(size_t size, size_t align, Allocation& allocOut);
 
         void Reset();
     };

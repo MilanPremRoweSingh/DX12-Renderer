@@ -67,13 +67,17 @@ public:
      ComPtr<ID3D12DescriptorHeap> m_rtvDescriptorHeap;
      ComPtr<ID3D12Resource> m_renderTargets[NUM_SWAP_CHAIN_BUFFERS];
 
+     ComPtr<ID3D12RootSignature> m_defaultRootSignature;
+
      ComPtr<ID3D12Resource> m_vertexBuffer;
      D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 
      ComPtr<ID3D12Resource> m_indexBuffer;
      D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 
-     ComPtr<ID3D12RootSignature> m_defaultRootSignature;
+     ComPtr<ID3D12DescriptorHeap> m_srvDescriptorHeap;
+     ComPtr<ID3D12Resource> m_texture;
+     
 
      ComPtr<ID3D12PipelineState> m_pipelineState;
 
@@ -90,5 +94,6 @@ public:
 
      // Queried Info
      uint32 m_rtvDescriptorSize;
+     uint32 m_srvDescriptorSize;
 
 };

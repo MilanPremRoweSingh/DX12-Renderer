@@ -51,6 +51,14 @@ void Device::CreateRenderTargetView(
     m_device->CreateRenderTargetView(resource, desc, rtvOut);
 }
 
+void Device::CreateShaderResourceView(
+    ID3D12Resource* resource,
+    D3D12_SHADER_RESOURCE_VIEW_DESC* desc,
+    D3D12_CPU_DESCRIPTOR_HANDLE& rtvOut)
+{
+    m_device->CreateShaderResourceView(resource, desc, rtvOut);
+}
+
 void Device::CreateRootSignature(
     ID3DBlob* signatureBlob,
     ID3D12RootSignature** rootSignature)
@@ -110,33 +118,45 @@ void Device::CreateBuffer(
 #endif
 }
 
+D3D12_RESOURCE_ALLOCATION_INFO Device::GetResourceAllocationInfo(
+    uint32 numResourceDescs,
+    const D3D12_RESOURCE_DESC* resourceDescs)
+{
+    return m_device->GetResourceAllocationInfo(0, numResourceDescs, resourceDescs);
+}
+
+void Device::GetCopyableFootprints(
+    const D3D12_RESOURCE_DESC* desc,
+    UINT firstSubresource,
+    UINT numSubresources,
+    UINT64 baseOffset,
+    D3D12_PLACED_SUBRESOURCE_FOOTPRINT* layouts,
+    UINT* numRows,
+    UINT64* rowSizeInBytes,
+    UINT64* totalBytes)
+{
+    m_device->GetCopyableFootprints(
+        desc,
+        firstSubresource,
+        numSubresources,
+        baseOffset,
+        layouts,
+        numRows,
+        rowSizeInBytes,
+        totalBytes);
+}
+
 void Device::CreateTexture2D(
     const D3D12_HEAP_PROPERTIES& heapProps,
-    uint32 width,
-    uint32 height,
-    uint16 mipLevels,
-    DXGI_FORMAT format,
+    const D3D12_RESOURCE_DESC& desc,
     D3D12_HEAP_FLAGS heapFlags,
     D3D12_RESOURCE_STATES initialState,
     ID3D12Resource** ppTexture)
 {
-    D3D12_RESOURCE_DESC resourceDesc = {};
-    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    resourceDesc.Width = width;
-    resourceDesc.Height = height;
-    resourceDesc.MipLevels = mipLevels;
-    resourceDesc.Format = format;
-    // The following are required for all 2D Textures
-    resourceDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT; // 64KB, for non MSAA textures
-    resourceDesc.DepthOrArraySize = 1;
-    resourceDesc.SampleDesc.Count = 1;
-    resourceDesc.SampleDesc.Quality = 0;
-    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-
     ASSERT_SUCCEEDED(m_device->CreateCommittedResource(
         &heapProps,
         heapFlags,
-        &resourceDesc,
+        &desc,
         initialState, // Required starting state of upload buffer
         nullptr,
         IID_PPV_ARGS(ppTexture)
