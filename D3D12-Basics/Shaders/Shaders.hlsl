@@ -35,6 +35,6 @@ VS_OUT HelloTriangleVS(VS_IN I)
 PS_OUT HelloTrianglePS(VS_OUT I)
 {
 	PS_OUT O;
-	O.col = I.col * Texture.Sample(Sampler, float2(0.5f, 0.5f));	
+	O.col = I.col * Texture.Sample(Sampler, float2(0.5f, 0.5f));
 	return O;
 }

@@ -328,7 +328,7 @@ void D3D12Context::LoadInitialAssets()
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
         heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
         heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-        int32 data = 0xFFFF;
+        int32 data = 0xFFFFFFFF;
         CreateTexture2D(heapProps, 1, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &data, &m_texture);
 
         CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 0, m_srvDescriptorSize);
@@ -670,11 +670,13 @@ void D3D12Context::CreateTexture2D(
     m_device->GetCopyableFootprints(&resourceDesc, 0, 1, 0, &footprint, &rows, &rowPitch, &slicePitch);
 
     UploadStream::Allocation uploadBufferAlloc = m_uploadStream->AllocateAligned(slicePitch, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+    footprint.Offset = uploadBufferAlloc.offset;
+
     
     uint64 alignedRowPitch = Utils::AlignUp(rowPitch, (uint64)D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
     for (uint32 i = 0; i < rows; i++)
     {
-        memcpy((INT8*)uploadBufferAlloc.cpuAddr + (i * alignedRowPitch), initialData, width * GetDXGIFormatSize(format));
+        memcpy((INT8*)uploadBufferAlloc.cpuAddr + (i * rowPitch), initialData, width * GetDXGIFormatSize(format));
     }
 
     D3D12_TEXTURE_COPY_LOCATION src;
