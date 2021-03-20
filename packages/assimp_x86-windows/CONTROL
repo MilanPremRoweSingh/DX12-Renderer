@@ -1,0 +1,9 @@
+Package: assimp
+Version: 5.0.1
+Port-Version: 4
+Depends: irrlicht, kubazip, minizip, poly2tri, polyclipping, rapidjson, stb, utfcpp, zlib
+Architecture: x86-windows
+Multi-Arch: same
+Abi: d63289a020874ed039c09e7f506487b439e2e479
+Description: The Open Asset import library
+Type: Port
