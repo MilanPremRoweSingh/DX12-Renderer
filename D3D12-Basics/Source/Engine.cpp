@@ -1,6 +1,7 @@
 #include "Engine.h"
 
 #include "Renderer.h"
+#include "AssetImporter.h"
 
 #include <windows.h>
 #include <chrono>
@@ -17,6 +18,7 @@ void EngineInitialise()
     gptRenderer = new Renderer();
     tStartTime = HighResClock::now();
     tCurrentFrameTime = tStartTime;
+    LoadModelsFromFile();
 }
 
 void EngineDispose()

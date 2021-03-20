@@ -3,6 +3,8 @@
 #include "Types.h"
 #include "Globals.h"
 
+#define NOMINMAX
+
 #include <assert.h>
 #include <windows.h>
 #include <SimpleMath.h>

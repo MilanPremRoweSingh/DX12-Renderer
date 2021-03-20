@@ -123,12 +123,13 @@
       <ForcedIncludeFiles>EnginePCH.h</ForcedIncludeFiles>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4065</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>$(ProjectDir)/External</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)/External;$(SolutionDir)Dependencies\assimp_x64-windows\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;assimp-vc142-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\assimp_x64-windows\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -156,6 +157,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Source\AssetImporter.cpp" />
     <ClCompile Include="Source\Device.cpp" />
     <ClCompile Include="Source\Camera.cpp" />
     <ClCompile Include="Source\D3D12Context.cpp" />
@@ -170,6 +172,7 @@
     <ClCompile Include="Source\UploadStream.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\AssetImporter.h" />
     <ClInclude Include="Source\D3D12Header.h" />
     <ClInclude Include="Source\Device.h" />
     <ClInclude Include="Source\Camera.h" />
