@@ -49,20 +49,6 @@ public:
         UINT64 initialValue,
         ID3D12Fence** fence);
 
-    D3D12_RESOURCE_ALLOCATION_INFO GetResourceAllocationInfo(
-        uint32 numResourceDescs,
-        const D3D12_RESOURCE_DESC* resourceDescs);
-
-    void GetCopyableFootprints(
-        const D3D12_RESOURCE_DESC* desc,
-        UINT firstSubresource,
-        UINT numSubresources,
-        UINT64 baseOffset,
-        D3D12_PLACED_SUBRESOURCE_FOOTPRINT* layouts,
-        UINT* numRows,
-        UINT64* rowSizeInBytes,
-        UINT64* totalBytes);
-
     void CreateBuffer(
         const D3D12_HEAP_PROPERTIES& heapProps,
         size_t size,
@@ -72,7 +58,10 @@ public:
 
     void CreateTexture2D(
         const D3D12_HEAP_PROPERTIES& heapProps,
-        const D3D12_RESOURCE_DESC& desc,
+        uint64 width,
+        uint32 height,
+        uint16 mipLevels,
+        DXGI_FORMAT format,
         D3D12_HEAP_FLAGS heapFlags,
         D3D12_RESOURCE_STATES initialState,
         ID3D12Resource** ppTexture);

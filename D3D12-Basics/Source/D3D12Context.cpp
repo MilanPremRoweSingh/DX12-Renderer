@@ -601,16 +601,6 @@ void D3D12Context::CreateBuffer(
 {
     m_device->CreateBuffer(heapProps, size, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, ppBuffer);
 
-    // Create Intermediate Upload buffer
-    ComPtr<ID3D12Resource> uploadBuffer;
-
-    D3D12_HEAP_PROPERTIES uploadHeapProps = {};
-    uploadHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-    uploadHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-    uploadHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-
-    m_device->CreateBuffer(uploadHeapProps, size, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &uploadBuffer);
-
     UploadStream::Allocation uploadBufferAlloc = m_uploadStream->Allocate(size);
     memcpy(uploadBufferAlloc.cpuAddr, initialData, size);    
     m_cmdList->CopyBufferRegion(*ppBuffer, 0, uploadBufferAlloc.buffer, uploadBufferAlloc.offset, size);
@@ -643,38 +633,22 @@ void D3D12Context::CreateTexture2D(
     void* initialData,
     ID3D12Resource** ppTexture)
 {
-    D3D12_RESOURCE_DESC resourceDesc = {};
-    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    resourceDesc.Width = width;
-    resourceDesc.Height = height;
-    resourceDesc.MipLevels = mipLevels;
-    resourceDesc.Format = format;
-    // The following are required for all 2D Textures
-    resourceDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-    resourceDesc.DepthOrArraySize = 1;
-    resourceDesc.SampleDesc.Count = 1;
-    resourceDesc.SampleDesc.Quality = 0;
-    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    m_device->CreateTexture2D(heapProps, width, height, mipLevels, format, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, ppTexture);
 
-    m_device->CreateTexture2D(heapProps, resourceDesc, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, ppTexture);
-
-    D3D12_HEAP_PROPERTIES uploadHeapProps = {};
-    uploadHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-    uploadHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-    uploadHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-
+    uint32 rowPitch = width * GetDXGIFormatSize(format);
+    size_t slicePitch = height * rowPitch;
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
-    uint32 rows;
-    uint64 rowPitch;
-    uint64 slicePitch;
-    m_device->GetCopyableFootprints(&resourceDesc, 0, 1, 0, &footprint, &rows, &rowPitch, &slicePitch);
+    footprint.Footprint.Width = width;
+    footprint.Footprint.Height = height;
+    footprint.Footprint.Depth = 1;
+    footprint.Footprint.Format = format;
+    footprint.Footprint.RowPitch = Utils::AlignUp(rowPitch, (uint32)D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
 
     UploadStream::Allocation uploadBufferAlloc = m_uploadStream->AllocateAligned(slicePitch, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
     footprint.Offset = uploadBufferAlloc.offset;
 
-    
-    uint64 alignedRowPitch = Utils::AlignUp(rowPitch, (uint64)D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
-    for (uint32 i = 0; i < rows; i++)
+    uint32 alignedRowPitch = Utils::AlignUp(rowPitch, (uint32)D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+    for (uint32 i = 0; i < height; i++)
     {
         memcpy((INT8*)uploadBufferAlloc.cpuAddr + (i * rowPitch), initialData, width * GetDXGIFormatSize(format));
     }
