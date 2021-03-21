@@ -221,7 +221,7 @@ static void sLoadTeapot(D3D12Context& context)
 {
     Assimp::Importer importer;
 
-    const aiScene* teapotScene = importer.ReadFile(TEAPOT_FILE, aiProcess_MakeLeftHanded | aiProcess_Triangulate);
+    const aiScene* teapotScene = importer.ReadFile(TEAPOT_FILE, aiProcess_MakeLeftHanded | aiProcess_Triangulate | aiProcess_GenNormals);
     aiMesh* teapot = teapotScene->mMeshes[0];
     assert(teapot);
     assert(teapot->HasFaces());
@@ -246,6 +246,10 @@ static void sLoadTeapot(D3D12Context& context)
             verts[i].pos[0] = teapot->mVertices[i].x;
             verts[i].pos[1] = teapot->mVertices[i].y;
             verts[i].pos[2] = teapot->mVertices[i].z;
+
+            verts[i].normal[0] = teapot->mNormals[i].x;
+            verts[i].normal[1] = teapot->mNormals[i].y;
+            verts[i].normal[2] = teapot->mNormals[i].z;
         }
 
     }
@@ -267,15 +271,16 @@ static void sLoadTeapot(D3D12Context& context)
 
 static void sLoadCube(D3D12Context& context)
 {
+    // With Normals now, we need to dupe verts for it work properly if we want proper shading
     Vertex verts[] = {
-        { { 1, 1, 1 }, { 1.0f, 1.0f, 1.0f, 1.0f } },
-        { { 1, 1, -1 }, { 1.0f, 1.0f, 0.0f, 1.0f } },
-        { { 1, -1, 1 }, { 1.0f, 0.0f, 1.0f, 1.0f } },
-        { { 1, -1, -1 }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-        { { -1, 1, 1 }, { 0.0f, 1.0f, 1.0f, 1.0f } },
-        { { -1, 1, -1 }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-        { { -1, -1, 1 }, { 0.0f, 0.0f, 1.0f, 1.0f } },
-        { { -1, -1, -1 }, { 0.0f, 0.0f, 0.0f, 1.0f } },
+        { { 1, 1, 1 }, { 1.0f, 1.0f, 1.0f, 1.0f }, {1.0f, 1.0f, 1.0f} },
+        { { 1, 1, -1 }, { 1.0f, 1.0f, 0.0f, 1.0f }, {1.0f, 1.0f, 1.0f} },
+        { { 1, -1, 1 }, { 1.0f, 0.0f, 1.0f, 1.0f }, {1.0f, 1.0f, 1.0f} },
+        { { 1, -1, -1 }, { 1.0f, 0.0f, 0.0f, 1.0f }, {1.0f, 1.0f, 1.0f} },
+        { { -1, 1, 1 }, { 0.0f, 1.0f, 1.0f, 1.0f }, {1.0f, 1.0f, 1.0f} },
+        { { -1, 1, -1 }, { 0.0f, 1.0f, 0.0f, 1.0f }, {1.0f, 1.0f, 1.0f} },
+        { { -1, -1, 1 }, { 0.0f, 0.0f, 1.0f, 1.0f }, {1.0f, 1.0f, 1.0f} },
+        { { -1, -1, -1 }, { 0.0f, 0.0f, 0.0f, 1.0f }, {1.0f, 1.0f, 1.0f} },
     };
     context.CreateVertexBuffer(_countof(verts), verts);
 
@@ -319,6 +324,7 @@ void D3D12Context::LoadInitialAssets()
 
         inputElementDescs.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
         inputElementDescs.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        inputElementDescs.push_back({ "NORMAL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
         desc.pRootSignature = m_defaultRootSignature.Get();
