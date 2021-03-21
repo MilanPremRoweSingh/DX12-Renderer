@@ -88,6 +88,9 @@ public:
      ComPtr<ID3D12Fence> m_fence;
      UINT64 m_fenceValue;
 
+     // Bleh
+     uint32 m_numVerts;
+
      // DXGI
      ComPtr<IDXGIFactory2> m_dxgiFactory2;
      ComPtr<IDXGISwapChain3> m_swapChain3;

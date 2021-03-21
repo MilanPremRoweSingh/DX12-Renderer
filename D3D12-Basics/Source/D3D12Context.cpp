@@ -1,14 +1,20 @@
 #include "D3D12Context.h"
 
-#include "D3D12Header.h"   
-#include "d3dcompiler.h"
+#include <d3dcompiler.h>
 
+#include "D3D12Header.h"   
 #include "Shell.h"
 #include "Engine.h"
 #include "Utils.h"
 
-// We won't want to include camera down the line, but set matrices in constant buffers via some interface which doesn't 
+// We won't want to include these but we're doing it for now so we can build enough functionality to be able to restructure it when we a) have enough idea of the functionality we want and b) would actually benefit from doing so.
 #include "Camera.h"
+#include <assimp/postprocess.h>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#define TEAPOT_FILE "../Data/Models/teapot.obj"
+
+#define USE_HARDCODED_SCENE 0
 
 D3D12Context::D3D12Context()
 {
@@ -210,19 +216,52 @@ void D3D12Context::LoadInitialAssets()
     CreateDefaultRootSignature();
 
     // Compile Shaders and create PSO
+#if USE_HARDCODED_SCENE
     ComPtr<ID3DBlob> vertexShader;
     sCompileShader("HelloTriangleVS", true, &vertexShader);
 
     ComPtr<ID3DBlob> pixelShader;
     sCompileShader("HelloTrianglePS", false, &pixelShader);
+#else
+    ComPtr<ID3DBlob> vertexShader;
+    sCompileShader("VSMain", true, &vertexShader);
+
+    ComPtr<ID3DBlob> pixelShader;
+    sCompileShader("PSMain", false, &pixelShader);
+#endif
+
+
+    Assimp::Importer importer;
+
+    std::string teapotPath(TEAPOT_FILE);
+    const aiScene* teapotScene = importer.ReadFile(teapotPath, aiProcess_MakeLeftHanded | aiProcess_Triangulate);
+    aiMesh* teapot = teapotScene->mMeshes[0];
+    assert(teapot);
+    assert(teapot->HasFaces());
+
+    bool useVertPositions, useVertColours;
+#if USE_HARDCODED_SCENE
+    useVertPositions = true;
+    useVertColours = true;
+#else
+    useVertPositions = teapot->HasPositions();
+    useVertColours = teapot->HasVertexColors(0);
+#endif
+
 
     // Create PSO
     {
-        D3D12_INPUT_ELEMENT_DESC inputElementDescs[]
+        std::vector<D3D12_INPUT_ELEMENT_DESC> inputElementDescs;
+
+        if (useVertPositions)
         {
-            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        };
+            inputElementDescs.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        }
+
+        if (useVertColours)
+        {
+            inputElementDescs.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        }
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
         desc.pRootSignature = m_defaultRootSignature.Get();
@@ -232,7 +271,7 @@ void D3D12Context::LoadInitialAssets()
         desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
         desc.DepthStencilState.DepthEnable = false;
         desc.DepthStencilState.StencilEnable = false;
-        desc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
+        desc.InputLayout = { inputElementDescs.data(), (uint32)inputElementDescs.size() };
         desc.SampleMask = UINT_MAX;
         desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         desc.NumRenderTargets = 1;
@@ -249,13 +288,14 @@ void D3D12Context::LoadInitialAssets()
 
     // Create Vertex Buffer
     {
+#if USE_HARDCODED_SCENE
         struct Vertex
         {
             float pos[3];
             float col[4];
         };
 
-        Vertex vertsReal[] = {
+        Vertex verts[] = {
             { { 1, 1, 1 }, { 1.0f, 1.0f, 1.0f, 1.0f } },
             { { 1, 1, -1 }, { 1.0f, 1.0f, 0.0f, 1.0f } },
             { { 1, -1, 1 }, { 1.0f, 0.0f, 1.0f, 1.0f } },
@@ -266,21 +306,35 @@ void D3D12Context::LoadInitialAssets()
             { { -1, -1, -1 }, { 0.0f, 0.0f, 0.0f, 1.0f } },
         };
 
+        size_t vertsTotalSize = sizeof(verts);
+        m_numVerts = _countof(verts);
+#else
+        struct Vertex
+        {
+            float pos[3];
+        };
+
+        Vertex* verts = (Vertex*)teapot->mVertices;
+        uint32 vertsTotalSize = sizeof(Vertex) * teapot->mNumVertices;
+        m_numVerts = teapot->mNumVertices;
+#endif
+
         D3D12_HEAP_PROPERTIES heapProps = {};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
         heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
         heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-        CreateBuffer(heapProps, sizeof(vertsReal), D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)vertsReal, &m_vertexBuffer);
+        CreateBuffer(heapProps, vertsTotalSize, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)verts, &m_vertexBuffer);
 
         m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
         m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-        m_vertexBufferView.SizeInBytes = sizeof(vertsReal);
+        m_vertexBufferView.SizeInBytes = vertsTotalSize;
     }
     
     // Create Index Buffer
     {
-        uint16 indices[] = {
+#if USE_HARDCODED_SCENE
+        uint32 indexData[] = {
         // Front Face
             0, 1, 4,
             4, 1, 5,
@@ -300,20 +354,34 @@ void D3D12Context::LoadInitialAssets()
             1, 3, 7,
             7, 5 ,1,
         };
+        uint32 indexBufferSize = sizeof(indices);
+#else
+        std::vector<uint32> indices;
+        indices.reserve(3 * teapot->mNumFaces);
+        for (uint32 dwFace = 0; dwFace < teapot->mNumFaces; dwFace++)
+        {
+            const aiFace& face = teapot->mFaces[dwFace];
+            for (uint32 indexIndex = 0; indexIndex < face.mNumIndices; indexIndex++)
+            {
+                indices.push_back(face.mIndices[indexIndex]);
+            }
+        }
+        uint32* indexData = indices.data();
+        uint32 indexBufferSize = sizeof(uint32) * (uint32)indices.size();
+#endif
 
-        // Again, use an upload buffer for simplicity but probably not the best
+
         D3D12_HEAP_PROPERTIES heapProps = {};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
         heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
         heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-        uint32 size = sizeof(indices);
 
-        CreateBuffer(heapProps, sizeof(indices), D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)indices, &m_indexBuffer);
+        CreateBuffer(heapProps, indexBufferSize, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)indexData, &m_indexBuffer);
 
         m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
-        m_indexBufferView.SizeInBytes = size;
-        m_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
+        m_indexBufferView.SizeInBytes = indexBufferSize;
+        m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
     }
 
     // Create dumb texture
@@ -370,9 +438,10 @@ void D3D12Context::Draw()
     float time = GetCurrentFrameTime();
 
     // This is terrible, but fine for now
-    Vector3 eyePos(radius * cosf(time), radius * sinf(time), 0.0f);
+    Vector3 eyePos(radius * cosf(time), 3.0f, radius * sinf(time));
     Vector3 targetPos;
-    Vector3 camUp(0.0f, 0.0f, 1.0f);
+    Vector3 camUp(0.0f, 1.0f, 0.0f);
+    camUp.Normalize();
     Camera cam(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
     Matrix4x4 matMVP;
     cam.GetViewProjMatrix(matMVP);
@@ -415,7 +484,7 @@ void D3D12Context::Draw()
     m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
     m_cmdList->IASetIndexBuffer(&m_indexBufferView);
-    m_cmdList->DrawIndexedInstanced(36, 1, 0, 0, 0);
+    m_cmdList->DrawIndexedInstanced(m_numVerts, 1, 0, 0, 0);
 
     // Transition back buffer to present
     {
@@ -445,150 +514,6 @@ void D3D12Context::Present()
     m_frameIndex = m_swapChain3->GetCurrentBackBufferIndex();
 
     m_uploadStream->ResetAllocations();
-}
-
-static uint32 GetDXGIFormatSize(DXGI_FORMAT dxgiFormat)
-{
-    assert(dxgiFormat != DXGI_FORMAT_R1_UNORM);
-    switch (static_cast<int>(dxgiFormat))
-    {
-        case DXGI_FORMAT_R32G32B32A32_TYPELESS:
-        case DXGI_FORMAT_R32G32B32A32_FLOAT:
-        case DXGI_FORMAT_R32G32B32A32_UINT:
-        case DXGI_FORMAT_R32G32B32A32_SINT:
-            return 32;
-
-        case DXGI_FORMAT_R32G32B32_TYPELESS:
-        case DXGI_FORMAT_R32G32B32_FLOAT:
-        case DXGI_FORMAT_R32G32B32_UINT:
-        case DXGI_FORMAT_R32G32B32_SINT:
-            return 24;
-
-        case DXGI_FORMAT_R16G16B16A16_TYPELESS:
-        case DXGI_FORMAT_R16G16B16A16_FLOAT:
-        case DXGI_FORMAT_R16G16B16A16_UNORM:
-        case DXGI_FORMAT_R16G16B16A16_UINT:
-        case DXGI_FORMAT_R16G16B16A16_SNORM:
-        case DXGI_FORMAT_R16G16B16A16_SINT:
-        case DXGI_FORMAT_R32G32_TYPELESS:
-        case DXGI_FORMAT_R32G32_FLOAT:
-        case DXGI_FORMAT_R32G32_UINT:
-        case DXGI_FORMAT_R32G32_SINT:
-        case DXGI_FORMAT_R32G8X24_TYPELESS:
-        case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
-        case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
-        case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
-        case DXGI_FORMAT_Y416:
-        case DXGI_FORMAT_Y210:
-        case DXGI_FORMAT_Y216:
-            return 16;
-
-        case DXGI_FORMAT_R10G10B10A2_TYPELESS:
-        case DXGI_FORMAT_R10G10B10A2_UNORM:
-        case DXGI_FORMAT_R10G10B10A2_UINT:
-        case DXGI_FORMAT_R11G11B10_FLOAT:
-        case DXGI_FORMAT_R8G8B8A8_TYPELESS:
-        case DXGI_FORMAT_R8G8B8A8_UNORM:
-        case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-        case DXGI_FORMAT_R8G8B8A8_UINT:
-        case DXGI_FORMAT_R8G8B8A8_SNORM:
-        case DXGI_FORMAT_R8G8B8A8_SINT:
-        case DXGI_FORMAT_R16G16_TYPELESS:
-        case DXGI_FORMAT_R16G16_FLOAT:
-        case DXGI_FORMAT_R16G16_UNORM:
-        case DXGI_FORMAT_R16G16_UINT:
-        case DXGI_FORMAT_R16G16_SNORM:
-        case DXGI_FORMAT_R16G16_SINT:
-        case DXGI_FORMAT_R32_TYPELESS:
-        case DXGI_FORMAT_D32_FLOAT:
-        case DXGI_FORMAT_R32_FLOAT:
-        case DXGI_FORMAT_R32_UINT:
-        case DXGI_FORMAT_R32_SINT:
-        case DXGI_FORMAT_R24G8_TYPELESS:
-        case DXGI_FORMAT_D24_UNORM_S8_UINT:
-        case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
-        case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
-        case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
-        case DXGI_FORMAT_R8G8_B8G8_UNORM:
-        case DXGI_FORMAT_G8R8_G8B8_UNORM:
-        case DXGI_FORMAT_B8G8R8A8_UNORM:
-        case DXGI_FORMAT_B8G8R8X8_UNORM:
-        case DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM:
-        case DXGI_FORMAT_B8G8R8A8_TYPELESS:
-        case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
-        case DXGI_FORMAT_B8G8R8X8_TYPELESS:
-        case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
-        case DXGI_FORMAT_AYUV:
-        case DXGI_FORMAT_Y410:
-        case DXGI_FORMAT_YUY2:
-            return 8;
-
-        case DXGI_FORMAT_P010:
-        case DXGI_FORMAT_P016:
-            return 6;
-
-        case DXGI_FORMAT_R8G8_TYPELESS:
-        case DXGI_FORMAT_R8G8_UNORM:
-        case DXGI_FORMAT_R8G8_UINT:
-        case DXGI_FORMAT_R8G8_SNORM:
-        case DXGI_FORMAT_R8G8_SINT:
-        case DXGI_FORMAT_R16_TYPELESS:
-        case DXGI_FORMAT_R16_FLOAT:
-        case DXGI_FORMAT_D16_UNORM:
-        case DXGI_FORMAT_R16_UNORM:
-        case DXGI_FORMAT_R16_UINT:
-        case DXGI_FORMAT_R16_SNORM:
-        case DXGI_FORMAT_R16_SINT:
-        case DXGI_FORMAT_B5G6R5_UNORM:
-        case DXGI_FORMAT_B5G5R5A1_UNORM:
-        case DXGI_FORMAT_A8P8:
-        case DXGI_FORMAT_B4G4R4A4_UNORM:
-            return 4;
-
-        case DXGI_FORMAT_NV12:
-        case DXGI_FORMAT_420_OPAQUE:
-        case DXGI_FORMAT_NV11:
-            return 3;
-
-        case DXGI_FORMAT_R8_TYPELESS:
-        case DXGI_FORMAT_R8_UNORM:
-        case DXGI_FORMAT_R8_UINT:
-        case DXGI_FORMAT_R8_SNORM:
-        case DXGI_FORMAT_R8_SINT:
-        case DXGI_FORMAT_A8_UNORM:
-        case DXGI_FORMAT_AI44:
-        case DXGI_FORMAT_IA44:
-        case DXGI_FORMAT_P8:
-            return 2;
-
-        case DXGI_FORMAT_BC1_TYPELESS:
-        case DXGI_FORMAT_BC1_UNORM:
-        case DXGI_FORMAT_BC1_UNORM_SRGB:
-        case DXGI_FORMAT_BC4_TYPELESS:
-        case DXGI_FORMAT_BC4_UNORM:
-        case DXGI_FORMAT_BC4_SNORM:
-            return 1;
-
-        case DXGI_FORMAT_BC2_TYPELESS:
-        case DXGI_FORMAT_BC2_UNORM:
-        case DXGI_FORMAT_BC2_UNORM_SRGB:
-        case DXGI_FORMAT_BC3_TYPELESS:
-        case DXGI_FORMAT_BC3_UNORM:
-        case DXGI_FORMAT_BC3_UNORM_SRGB:
-        case DXGI_FORMAT_BC5_TYPELESS:
-        case DXGI_FORMAT_BC5_UNORM:
-        case DXGI_FORMAT_BC5_SNORM:
-        case DXGI_FORMAT_BC6H_TYPELESS:
-        case DXGI_FORMAT_BC6H_UF16:
-        case DXGI_FORMAT_BC6H_SF16:
-        case DXGI_FORMAT_BC7_TYPELESS:
-        case DXGI_FORMAT_BC7_UNORM:
-        case DXGI_FORMAT_BC7_UNORM_SRGB:
-            return 2;
-
-        default:
-            return 0;
-    }
 }
 
 void D3D12Context::CreateBuffer(

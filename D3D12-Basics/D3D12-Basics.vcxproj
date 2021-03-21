@@ -157,7 +157,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Source\AssetImporter.cpp" />
     <ClCompile Include="Source\Device.cpp" />
     <ClCompile Include="Source\Camera.cpp" />
     <ClCompile Include="Source\D3D12Context.cpp" />
@@ -172,7 +171,6 @@
     <ClCompile Include="Source\UploadStream.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Source\AssetImporter.h" />
     <ClInclude Include="Source\D3D12Header.h" />
     <ClInclude Include="Source\Device.h" />
     <ClInclude Include="Source\Camera.h" />
