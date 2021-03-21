@@ -23,12 +23,21 @@ public:
 
     void CreateDescriptorHeap(
         const D3D12_DESCRIPTOR_HEAP_DESC& desc,
+        ID3D12DescriptorHeap** ppDescriptorHeap);
+
+    void CreateDescriptorHeap(
+        const D3D12_DESCRIPTOR_HEAP_DESC& desc,
         ID3D12DescriptorHeap** ppDescriptorHeap,
         uint32& descriptorSizeOut);
 
     void CreateRenderTargetView(
         ID3D12Resource* resource,
         D3D12_RENDER_TARGET_VIEW_DESC* desc,
+        D3D12_CPU_DESCRIPTOR_HANDLE& rtvOut);
+
+    void CreateDepthStencilView(
+        ID3D12Resource* resource,
+        D3D12_DEPTH_STENCIL_VIEW_DESC* desc,
         D3D12_CPU_DESCRIPTOR_HANDLE& rtvOut);
 
 
@@ -64,6 +73,7 @@ public:
         DXGI_FORMAT format,
         D3D12_HEAP_FLAGS heapFlags,
         D3D12_RESOURCE_STATES initialState,
+        D3D12_RESOURCE_FLAGS resourceFlags,
         ID3D12Resource** ppTexture);
 
     Device();

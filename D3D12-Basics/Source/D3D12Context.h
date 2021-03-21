@@ -112,6 +112,10 @@ public:
 
      ComPtr<ID3D12DescriptorHeap> m_rtvDescriptorHeap;
      ComPtr<ID3D12Resource> m_renderTargets[NUM_SWAP_CHAIN_BUFFERS];
+     uint32 m_rtvDescriptorSize;
+
+     ComPtr<ID3D12DescriptorHeap> m_dsvDescriptorHeap;
+     ComPtr<ID3D12Resource> m_depthStencil;
 
      ComPtr<ID3D12RootSignature> m_defaultRootSignature;
 
@@ -132,9 +136,4 @@ public:
      // DXGI
      ComPtr<IDXGIFactory2> m_dxgiFactory2;
      ComPtr<IDXGISwapChain3> m_swapChain3;
-
-     // Queried Info
-     uint32 m_rtvDescriptorSize;
-     uint32 m_srvDescriptorSize;
-
 };

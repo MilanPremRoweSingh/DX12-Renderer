@@ -73,7 +73,7 @@ void Camera::sCalcLookAtMatrix(
     vecLook.Normalize();
     
     Vector3 vecRight;
-    vecUp.Cross(vecLook, vecRight);
+    vecLook.Cross(vecUp, vecRight);
     vecRight.Normalize();
 
     matLookAtOut._11 = vecRight.x;

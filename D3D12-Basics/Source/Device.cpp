@@ -36,10 +36,17 @@ void Device::CreateCommandAllocator(
 
 void Device::CreateDescriptorHeap(
     const D3D12_DESCRIPTOR_HEAP_DESC& desc,
+    ID3D12DescriptorHeap** ppDescriptorHeap)
+{
+    ASSERT_SUCCEEDED(m_device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(ppDescriptorHeap)));
+}
+
+void Device::CreateDescriptorHeap(
+    const D3D12_DESCRIPTOR_HEAP_DESC& desc,
     ID3D12DescriptorHeap** ppDescriptorHeap,
     uint32& descriptorSize)
 {
-    ASSERT_SUCCEEDED(m_device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(ppDescriptorHeap)));
+    CreateDescriptorHeap(desc, ppDescriptorHeap);
     descriptorSize = m_device->GetDescriptorHandleIncrementSize(desc.Type);
 }
 
@@ -49,6 +56,14 @@ void Device::CreateRenderTargetView(
     D3D12_CPU_DESCRIPTOR_HANDLE& rtvOut)
 {
     m_device->CreateRenderTargetView(resource, desc, rtvOut);
+}
+
+void Device::CreateDepthStencilView(
+    ID3D12Resource* resource,
+    D3D12_DEPTH_STENCIL_VIEW_DESC* desc,
+    D3D12_CPU_DESCRIPTOR_HANDLE& rtvOut)
+{
+    m_device->CreateDepthStencilView(resource, desc, rtvOut);
 }
 
 void Device::CreateShaderResourceView(
@@ -126,6 +141,7 @@ void Device::CreateTexture2D(
     DXGI_FORMAT format,
     D3D12_HEAP_FLAGS heapFlags,
     D3D12_RESOURCE_STATES initialState,
+    D3D12_RESOURCE_FLAGS resourceFlags,
     ID3D12Resource** ppTexture)
 {
     D3D12_RESOURCE_DESC desc = {};
@@ -134,6 +150,7 @@ void Device::CreateTexture2D(
     desc.Height = height;
     desc.MipLevels = mipLevels;
     desc.Format = format;
+    desc.Flags = resourceFlags;
     // The following are required for all 2D Textures
     desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
     desc.DepthOrArraySize = 1;

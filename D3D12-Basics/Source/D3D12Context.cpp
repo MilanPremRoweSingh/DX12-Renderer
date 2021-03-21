@@ -137,7 +137,7 @@ void D3D12Context::InitialisePipeline()
         m_frameIndex = m_swapChain3->GetCurrentBackBufferIndex();
     }
 
-    // Create RTV Descriptor Heap
+    // Create RTV Descriptor Heap and RTV Descriptors
     {
         D3D12_DESCRIPTOR_HEAP_DESC desc = {};
         desc.NumDescriptors = NUM_SWAP_CHAIN_BUFFERS;
@@ -145,10 +145,6 @@ void D3D12Context::InitialisePipeline()
         desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
         m_device->CreateDescriptorHeap(desc, &m_rtvDescriptorHeap, m_rtvDescriptorSize);
-    }
-
-    // Create RTV Descriptors
-    {
         CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 0, m_rtvDescriptorSize);
 
         for (int32 i = 0; i < NUM_SWAP_CHAIN_BUFFERS; i++)
@@ -157,6 +153,30 @@ void D3D12Context::InitialisePipeline()
             m_device->CreateRenderTargetView(m_renderTargets[i].Get(), NULL, handle);
             handle.Offset(1, m_rtvDescriptorSize);
         }
+    }
+
+    // Create DSV Descriptor Heap and DSV Descriptor
+    {        
+        D3D12_HEAP_PROPERTIES heapProps = {};
+        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+        m_device->CreateTexture2D(heapProps, WINDOW_WIDTH, WINDOW_HEIGHT, 1, DXGI_FORMAT_D32_FLOAT, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, &m_depthStencil);
+
+        D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc = {};
+        descHeapDesc.NumDescriptors = 1;
+        descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+        descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+
+        m_device->CreateDescriptorHeap(descHeapDesc, &m_dsvDescriptorHeap);
+        D3D12_CPU_DESCRIPTOR_HANDLE handle = m_dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+
+        D3D12_DEPTH_STENCIL_VIEW_DESC depthStencilDesc = {};
+        depthStencilDesc.Format = DXGI_FORMAT_D32_FLOAT;
+        depthStencilDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        depthStencilDesc.Flags = D3D12_DSV_FLAG_NONE;
+
+        m_device->CreateDepthStencilView(m_depthStencil.Get(), &depthStencilDesc, handle);
     }
 
     m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, &m_cmdAllocator);
@@ -221,7 +241,7 @@ static void sLoadTeapot(D3D12Context& context)
 {
     Assimp::Importer importer;
 
-    const aiScene* teapotScene = importer.ReadFile(TEAPOT_FILE, aiProcess_MakeLeftHanded | aiProcess_Triangulate | aiProcess_GenNormals);
+    const aiScene* teapotScene = importer.ReadFile(TEAPOT_FILE, aiProcess_MakeLeftHanded | aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_FlipWindingOrder);
     aiMesh* teapot = teapotScene->mMeshes[0];
     assert(teapot);
     assert(teapot->HasFaces());
@@ -332,8 +352,9 @@ void D3D12Context::LoadInitialAssets()
         desc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
         desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
         desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-        desc.DepthStencilState.DepthEnable = false;
+        desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
         desc.DepthStencilState.StencilEnable = false;
+        desc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
         desc.InputLayout = { inputElementDescs.data(), (uint32)inputElementDescs.size() };
         desc.SampleMask = UINT_MAX;
         desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -357,7 +378,7 @@ void D3D12Context::LoadInitialAssets()
         desc.NumDescriptors = 1;
         desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
         desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-        m_device->CreateDescriptorHeap(desc, &m_srvDescriptorHeap, m_srvDescriptorSize);
+        m_device->CreateDescriptorHeap(desc, &m_srvDescriptorHeap);
 
         D3D12_HEAP_PROPERTIES heapProps = {};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -366,7 +387,7 @@ void D3D12Context::LoadInitialAssets()
         int32 data = 0xFFFFFFFF;
         CreateTexture2D(heapProps, 1, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &data, &m_texture);
 
-        CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 0, m_srvDescriptorSize);
+        D3D12_CPU_DESCRIPTOR_HANDLE handle = m_srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
         m_device->CreateShaderResourceView(m_texture.Get(), NULL, handle);
     }
 
@@ -443,11 +464,14 @@ void D3D12Context::Draw()
     D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
     rtvHandle.ptr = m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + (UINT64)m_frameIndex * (UINT64)m_rtvDescriptorSize;
 
-    m_cmdList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHadle = m_dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+
+    m_cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHadle);
 
     // Draw
     const float clearColor[] = { 86.0f / 255.0f, 0.0f / 255.0f, 94.0f / 255.0f, 1.0f };
     m_cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    m_cmdList->ClearDepthStencilView(dsvHadle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
     m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBuffers[0].view);
     m_cmdList->IASetIndexBuffer(&m_indexBuffers[0].view);
@@ -525,7 +549,7 @@ void D3D12Context::CreateTexture2D(
     void* initialData,
     ID3D12Resource** ppTexture)
 {
-    m_device->CreateTexture2D(heapProps, width, height, mipLevels, format, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, ppTexture);
+    m_device->CreateTexture2D(heapProps, width, height, mipLevels, format, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, ppTexture);
 
     uint32 rowPitch = width * GetDXGIFormatSize(format);
     size_t slicePitch = height * rowPitch;
