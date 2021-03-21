@@ -1,12 +1,49 @@
 #pragma once
 
+#include <dxgi1_6.h>
+#include <vector>
+
 #include "Renderer.h"
 #include "D3D12Header.h"
 #include "Device.h"
 #include "UploadStream.h"
 
-#include "dxgi1_6.h"
+// Enums ///////////////////////////////////////////////////////////////////////////////////
 
+enum VertexBufferID : int32
+{
+    VertexBufferIDInvalid = -1
+};
+
+enum IndexBufferID : int32
+{
+    IndexBufferIDInvalid = -1
+};
+
+// Structs /////////////////////////////////////////////////////////////////////////////////
+
+struct IndexBuffer
+{
+    ComPtr<ID3D12Resource> buffer;
+    D3D12_INDEX_BUFFER_VIEW view;
+    size_t indexCount;
+};
+
+struct VertexBuffer
+{
+    ComPtr<ID3D12Resource> buffer;
+    D3D12_VERTEX_BUFFER_VIEW view;
+    size_t vertexCount;
+};
+
+// Support a single vertex format for now
+struct Vertex
+{
+    float pos[3];
+    float col[4];
+};
+
+// Classes /////////////////////////////////////////////////////////////////////////////////
 
 class D3D12Context
 {
@@ -51,6 +88,14 @@ public:
         void* initialData,
         ID3D12Resource** ppTexture);
 
+    VertexBufferID CreateVertexBuffer(
+        size_t vertexCount,
+        Vertex* vertexData);
+
+    IndexBufferID CreateIndexBuffer(
+        size_t indexCount,
+        uint32* indexData);
+
  private:
 
      void CreateDefaultRootSignature(
@@ -69,27 +114,19 @@ public:
 
      ComPtr<ID3D12RootSignature> m_defaultRootSignature;
 
-     ComPtr<ID3D12Resource> m_vertexBuffer;
-     D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
-
-     ComPtr<ID3D12Resource> m_indexBuffer;
-     D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
-
      ComPtr<ID3D12DescriptorHeap> m_srvDescriptorHeap;
      ComPtr<ID3D12Resource> m_texture;
      
-
      ComPtr<ID3D12PipelineState> m_pipelineState;
 
      UploadStream* m_uploadStream;
+     std::vector<VertexBuffer> m_vertexBuffers;
+     std::vector<IndexBuffer> m_indexBuffers;
 
      uint32 m_frameIndex = 0;
      HANDLE m_fenceEvent;
      ComPtr<ID3D12Fence> m_fence;
      UINT64 m_fenceValue;
-
-     // Bleh
-     uint32 m_numVerts;
 
      // DXGI
      ComPtr<IDXGIFactory2> m_dxgiFactory2;

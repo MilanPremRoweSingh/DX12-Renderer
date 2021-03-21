@@ -12,9 +12,46 @@
 #include <assimp/postprocess.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
-#define TEAPOT_FILE "../Data/Models/teapot.obj"
 
+
+// Defines /////////////////////////////////////////////////////////////////////////////////
+
+#define TEAPOT_FILE "../Data/Models/teapot.obj"
 #define USE_HARDCODED_SCENE 0
+
+// Local Functions  ////////////////////////////////////////////////////////////////////////
+
+static void sCompileShader(const char* entryPoint, bool fIsVertexShader, ID3DBlob** shaderBlob)
+{
+    ComPtr<ID3DBlob> error;
+
+    UINT compileFlags = 0;
+    if (globals.fD3DDebug)
+    {
+        compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+    }
+
+    HRESULT result = D3DCompileFromFile(
+        SHADER_FILE,
+        nullptr,
+        nullptr,
+        entryPoint,
+        fIsVertexShader ? "vs_5_0" : "ps_5_0",
+        compileFlags,
+        0,
+        shaderBlob,
+        &error);
+
+    if (!SUCCEEDED(result))
+    {
+        if (error)
+        {
+            EngineLog((char*)error->GetBufferPointer());
+        }
+    }
+}
+
+// Member Functions  ///////////////////////////////////////////////////////////////////////
 
 D3D12Context::D3D12Context()
 {
@@ -54,37 +91,6 @@ D3D12Context::~D3D12Context()
 {
     delete m_uploadStream;
     delete m_device;
-}
-
-
-static void sCompileShader(const char* entryPoint, bool fIsVertexShader, ID3DBlob** shaderBlob)
-{
-    ComPtr<ID3DBlob> error;
-
-    UINT compileFlags = 0;
-    if (globals.fD3DDebug)
-    {
-        compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-    }
-
-    HRESULT result = D3DCompileFromFile(
-        SHADER_FILE,
-        nullptr,
-        nullptr,
-        entryPoint,
-        fIsVertexShader ? "vs_5_0" : "ps_5_0",
-        compileFlags,
-        0,
-        shaderBlob,
-        &error);
-
-    if (!SUCCEEDED(result))
-    {
-        if (error)
-        {
-            EngineLog((char*)error->GetBufferPointer());
-        }
-    }
 }
 
 void D3D12Context::InitialisePipeline()
@@ -211,57 +217,108 @@ void D3D12Context::CreateDefaultRootSignature()
     m_device->CreateRootSignature(signature.Get(), &m_defaultRootSignature);
 }
 
+static void sLoadTeapot(D3D12Context& context)
+{
+    Assimp::Importer importer;
+
+    const aiScene* teapotScene = importer.ReadFile(TEAPOT_FILE, aiProcess_MakeLeftHanded | aiProcess_Triangulate);
+    aiMesh* teapot = teapotScene->mMeshes[0];
+    assert(teapot);
+    assert(teapot->HasFaces());
+    assert(teapot->HasPositions());
+
+    //Create Vertex Buffer
+    Vertex* verts = nullptr;
+    if (teapot->HasVertexColors(0))
+    {
+        verts = (Vertex*)teapot->mVertices;
+    }
+    else
+    {
+        verts = new Vertex[teapot->mNumVertices];
+        for (uint32 i = 0; i < teapot->mNumVertices; i++)
+        {
+            verts[i].col[0] = 1.0f;
+            verts[i].col[1] = 1.0f;
+            verts[i].col[2] = 1.0f;
+            verts[i].col[3] = 1.0f;
+
+            verts[i].pos[0] = teapot->mVertices[i].x;
+            verts[i].pos[1] = teapot->mVertices[i].y;
+            verts[i].pos[2] = teapot->mVertices[i].z;
+        }
+
+    }
+    context.CreateVertexBuffer(teapot->mNumVertices, verts);
+
+    // Create Index Buffer
+    std::vector<uint32> indices;
+    indices.reserve(3 * teapot->mNumFaces);
+    for (uint32 dwFace = 0; dwFace < teapot->mNumFaces; dwFace++)
+    {
+        const aiFace& face = teapot->mFaces[dwFace];
+        for (uint32 indexIndex = 0; indexIndex < face.mNumIndices; indexIndex++)
+        {
+            indices.push_back(face.mIndices[indexIndex]);
+        }
+    }
+    context.CreateIndexBuffer(indices.size(), indices.data());
+}
+
+static void sLoadCube(D3D12Context& context)
+{
+    Vertex verts[] = {
+        { { 1, 1, 1 }, { 1.0f, 1.0f, 1.0f, 1.0f } },
+        { { 1, 1, -1 }, { 1.0f, 1.0f, 0.0f, 1.0f } },
+        { { 1, -1, 1 }, { 1.0f, 0.0f, 1.0f, 1.0f } },
+        { { 1, -1, -1 }, { 1.0f, 0.0f, 0.0f, 1.0f } },
+        { { -1, 1, 1 }, { 0.0f, 1.0f, 1.0f, 1.0f } },
+        { { -1, 1, -1 }, { 0.0f, 1.0f, 0.0f, 1.0f } },
+        { { -1, -1, 1 }, { 0.0f, 0.0f, 1.0f, 1.0f } },
+        { { -1, -1, -1 }, { 0.0f, 0.0f, 0.0f, 1.0f } },
+    };
+    context.CreateVertexBuffer(_countof(verts), verts);
+
+    uint32 indexData[] = {
+    // Front Face
+        0, 1, 4,
+        4, 1, 5,
+    // Right Face
+        2, 3, 1,
+        2, 1, 0,
+    // Back Face
+        2, 7, 3,
+        6, 7, 2,
+    // Left Face
+        4, 5, 7,
+        6, 4, 7,
+    // Top Face
+        0, 4, 2,
+        4, 6, 2,
+    // Bottom Face
+        1, 3, 7,
+        7, 5 ,1,
+    };
+    context.CreateIndexBuffer(_countof(indexData), indexData);
+}
+
 void D3D12Context::LoadInitialAssets()
 {
     CreateDefaultRootSignature();
 
     // Compile Shaders and create PSO
-#if USE_HARDCODED_SCENE
-    ComPtr<ID3DBlob> vertexShader;
-    sCompileShader("HelloTriangleVS", true, &vertexShader);
-
-    ComPtr<ID3DBlob> pixelShader;
-    sCompileShader("HelloTrianglePS", false, &pixelShader);
-#else
     ComPtr<ID3DBlob> vertexShader;
     sCompileShader("VSMain", true, &vertexShader);
 
     ComPtr<ID3DBlob> pixelShader;
     sCompileShader("PSMain", false, &pixelShader);
-#endif
-
-
-    Assimp::Importer importer;
-
-    std::string teapotPath(TEAPOT_FILE);
-    const aiScene* teapotScene = importer.ReadFile(teapotPath, aiProcess_MakeLeftHanded | aiProcess_Triangulate);
-    aiMesh* teapot = teapotScene->mMeshes[0];
-    assert(teapot);
-    assert(teapot->HasFaces());
-
-    bool useVertPositions, useVertColours;
-#if USE_HARDCODED_SCENE
-    useVertPositions = true;
-    useVertColours = true;
-#else
-    useVertPositions = teapot->HasPositions();
-    useVertColours = teapot->HasVertexColors(0);
-#endif
-
 
     // Create PSO
     {
         std::vector<D3D12_INPUT_ELEMENT_DESC> inputElementDescs;
 
-        if (useVertPositions)
-        {
-            inputElementDescs.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-        }
-
-        if (useVertColours)
-        {
-            inputElementDescs.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-        }
+        inputElementDescs.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        inputElementDescs.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
         desc.pRootSignature = m_defaultRootSignature.Get();
@@ -286,103 +343,7 @@ void D3D12Context::LoadInitialAssets()
         m_device->CreateGraphicsCommandList(m_cmdAllocator.Get(), m_pipelineState.Get(), &m_cmdList);
     }
 
-    // Create Vertex Buffer
-    {
-#if USE_HARDCODED_SCENE
-        struct Vertex
-        {
-            float pos[3];
-            float col[4];
-        };
-
-        Vertex verts[] = {
-            { { 1, 1, 1 }, { 1.0f, 1.0f, 1.0f, 1.0f } },
-            { { 1, 1, -1 }, { 1.0f, 1.0f, 0.0f, 1.0f } },
-            { { 1, -1, 1 }, { 1.0f, 0.0f, 1.0f, 1.0f } },
-            { { 1, -1, -1 }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-            { { -1, 1, 1 }, { 0.0f, 1.0f, 1.0f, 1.0f } },
-            { { -1, 1, -1 }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-            { { -1, -1, 1 }, { 0.0f, 0.0f, 1.0f, 1.0f } },
-            { { -1, -1, -1 }, { 0.0f, 0.0f, 0.0f, 1.0f } },
-        };
-
-        size_t vertsTotalSize = sizeof(verts);
-        m_numVerts = _countof(verts);
-#else
-        struct Vertex
-        {
-            float pos[3];
-        };
-
-        Vertex* verts = (Vertex*)teapot->mVertices;
-        uint32 vertsTotalSize = sizeof(Vertex) * teapot->mNumVertices;
-        m_numVerts = teapot->mNumVertices;
-#endif
-
-        D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-
-        CreateBuffer(heapProps, vertsTotalSize, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)verts, &m_vertexBuffer);
-
-        m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
-        m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-        m_vertexBufferView.SizeInBytes = vertsTotalSize;
-    }
-    
-    // Create Index Buffer
-    {
-#if USE_HARDCODED_SCENE
-        uint32 indexData[] = {
-        // Front Face
-            0, 1, 4,
-            4, 1, 5,
-        // Right Face
-            2, 3, 1,
-            2, 1, 0,
-        // Back Face
-            2, 7, 3,
-            6, 7, 2,
-        // Left Face
-            4, 5, 7,
-            6, 4, 7,
-        // Top Face
-            0, 4, 2,
-            4, 6, 2,
-        // Bottom Face
-            1, 3, 7,
-            7, 5 ,1,
-        };
-        uint32 indexBufferSize = sizeof(indices);
-#else
-        std::vector<uint32> indices;
-        indices.reserve(3 * teapot->mNumFaces);
-        for (uint32 dwFace = 0; dwFace < teapot->mNumFaces; dwFace++)
-        {
-            const aiFace& face = teapot->mFaces[dwFace];
-            for (uint32 indexIndex = 0; indexIndex < face.mNumIndices; indexIndex++)
-            {
-                indices.push_back(face.mIndices[indexIndex]);
-            }
-        }
-        uint32* indexData = indices.data();
-        uint32 indexBufferSize = sizeof(uint32) * (uint32)indices.size();
-#endif
-
-
-        D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-
-
-        CreateBuffer(heapProps, indexBufferSize, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)indexData, &m_indexBuffer);
-
-        m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
-        m_indexBufferView.SizeInBytes = indexBufferSize;
-        m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-    }
+    sLoadTeapot(*this);
 
     // Create dumb texture
     {
@@ -482,9 +443,9 @@ void D3D12Context::Draw()
     const float clearColor[] = { 86.0f / 255.0f, 0.0f / 255.0f, 94.0f / 255.0f, 1.0f };
     m_cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-    m_cmdList->IASetIndexBuffer(&m_indexBufferView);
-    m_cmdList->DrawIndexedInstanced(m_numVerts, 1, 0, 0, 0);
+    m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBuffers[0].view);
+    m_cmdList->IASetIndexBuffer(&m_indexBuffers[0].view);
+    m_cmdList->DrawIndexedInstanced((uint32)m_indexBuffers[0].indexCount, 1, 0, 0, 0);
 
     // Transition back buffer to present
     {
@@ -605,4 +566,52 @@ void D3D12Context::CreateTexture2D(
 
         m_cmdList->ResourceBarrier(1, &barrier);
     }
+}
+
+VertexBufferID D3D12Context::CreateVertexBuffer(
+    size_t vertexCount,
+    Vertex* vertexData)
+{
+    m_vertexBuffers.emplace_back();
+    VertexBuffer& vertexBuffer = m_vertexBuffers.back();
+
+    size_t vertsTotalSize = sizeof(Vertex) * vertexCount;
+
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+    heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+    CreateBuffer(heapProps, (uint32)vertsTotalSize, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)vertexData, &vertexBuffer.buffer);
+
+    vertexBuffer.view.BufferLocation = vertexBuffer.buffer->GetGPUVirtualAddress();
+    vertexBuffer.view.StrideInBytes = sizeof(Vertex);
+    vertexBuffer.view.SizeInBytes = (uint32)vertsTotalSize;
+
+    vertexBuffer.vertexCount = vertexCount;
+    return (VertexBufferID)(m_vertexBuffers.size() - 1);
+}
+
+IndexBufferID D3D12Context::CreateIndexBuffer(
+    size_t indexCount,
+    uint32* indexData)
+{
+    m_indexBuffers.emplace_back();
+    IndexBuffer& indexBuffer = m_indexBuffers.back();
+
+    size_t indexTotalSize = sizeof(uint32) * indexCount;
+
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+    heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+    CreateBuffer(heapProps, (uint32)indexTotalSize, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)indexData, &indexBuffer.buffer);
+
+    indexBuffer.view.BufferLocation = indexBuffer.buffer->GetGPUVirtualAddress();
+    indexBuffer.view.SizeInBytes = sizeof(uint32) * (uint32)indexCount;
+    indexBuffer.view.Format = DXGI_FORMAT_R32_UINT;
+
+    indexBuffer.indexCount = indexCount;
+    return (IndexBufferID)(m_indexBuffers.size() - 1);
 }
