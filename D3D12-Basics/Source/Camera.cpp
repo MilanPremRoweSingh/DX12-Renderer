@@ -54,9 +54,9 @@ void Camera::sCalcProjMatrix(
     float s = 1.0f / tanf(flFOVInDeg * F_DEG_TO_RAD / 2.0f);
 
     projMatOut = Matrix4x4(
-        s, 0.0f, 0.0f, 0.0f,
-        0.0f, s * flAspectRatio, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f / (flFar - flNear), 2 * flNear / (flFar - flNear),
+        s / flAspectRatio, 0.0f, 0.0f, 0.0f,
+        0.0f, s , 0.0f, 0.0f,
+        0.0f, 0.0f, flFar / (flFar - flNear), -flNear*flFar / (flFar - flNear),
         0.0f, 0.0f, 1.0f, 0.0f
     );
 }
@@ -73,7 +73,7 @@ void Camera::sCalcLookAtMatrix(
     vecLook.Normalize();
     
     Vector3 vecRight;
-    vecLook.Cross(vecUp, vecRight);
+    vecUp.Cross(vecLook, vecRight);
     vecRight.Normalize();
 
     matLookAtOut._11 = vecRight.x;

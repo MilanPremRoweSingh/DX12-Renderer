@@ -241,7 +241,7 @@ static void sLoadTeapot(D3D12Context& context)
 {
     Assimp::Importer importer;
 
-    const aiScene* teapotScene = importer.ReadFile(TEAPOT_FILE, aiProcess_MakeLeftHanded | aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_FlipWindingOrder);
+    const aiScene* teapotScene = importer.ReadFile(TEAPOT_FILE, aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_MakeLeftHanded | aiProcess_FlipWindingOrder );
     aiMesh* teapot = teapotScene->mMeshes[0];
     assert(teapot);
     assert(teapot->HasFaces());
@@ -344,7 +344,7 @@ void D3D12Context::LoadInitialAssets()
 
         inputElementDescs.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
         inputElementDescs.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-        inputElementDescs.push_back({ "NORMAL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        inputElementDescs.push_back({ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
         desc.pRootSignature = m_defaultRootSignature.Get();
@@ -426,7 +426,7 @@ void D3D12Context::Draw()
     float time = GetCurrentFrameTime();
 
     // This is terrible, but fine for now
-    Vector3 eyePos(radius * cosf(time), 3.0f, radius * sinf(time));
+    Vector3 eyePos(radius * cosf(time), 0.0f, radius * sinf(time));
     Vector3 targetPos;
     Vector3 camUp(0.0f, 1.0f, 0.0f);
     camUp.Normalize();
