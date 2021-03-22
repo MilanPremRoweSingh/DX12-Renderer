@@ -1,3 +1,4 @@
+#include "Lighting.h"
 
 cbuffer Constants0
 {
@@ -32,14 +33,17 @@ VS_OUT VSMain(VS_IN I)
 	VS_OUT O;
 	O.col = I.col;
 	O.pos = mul(mat, float4(I.pos + float3(0,0,0), 1.0f));
-	O.normal = mul(mat, float4(I.normal, 1.0f));
+	O.normal = mul(mat, float4(I.normal, 0.0f)).xyz;
 	return O;
 }
 
 PS_OUT PSMain(VS_OUT I)
 {
 	PS_OUT O;
-	float4 col = float4((I.normal+1.0f) * 0.5f, 1.0f);
-	O.col = col;// * float4(1,1,1,1);//I.col * Texture.Sample(Sampler, float2(0.5f, 0.5f));
+
+	float3 n = normalize(I.normal);
+	float3 l = normalize(float3(1, 1, 0));
+
+	O.col = I.col * Lambertian(n, l);
 	return O;
 }

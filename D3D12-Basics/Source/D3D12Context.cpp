@@ -18,6 +18,7 @@
 
 #define TEAPOT_FILE "../Data/Models/teapot.obj"
 #define USE_HARDCODED_SCENE 0
+#define D3D_COMPILE_STANDARD_FILE_INCLUDE ((ID3DInclude*)(UINT_PTR)1)
 
 // Local Functions  ////////////////////////////////////////////////////////////////////////
 
@@ -34,7 +35,7 @@ static void sCompileShader(const char* entryPoint, bool fIsVertexShader, ID3DBlo
     HRESULT result = D3DCompileFromFile(
         SHADER_FILE,
         nullptr,
-        nullptr,
+        D3D_COMPILE_STANDARD_FILE_INCLUDE,
         entryPoint,
         fIsVertexShader ? "vs_5_0" : "ps_5_0",
         compileFlags,
