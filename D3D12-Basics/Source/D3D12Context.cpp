@@ -158,11 +158,15 @@ void D3D12Context::InitialisePipeline()
 
     // Create DSV Descriptor Heap and DSV Descriptor
     {        
+        D3D12_CLEAR_VALUE clearValue = {};
+        clearValue.Format = DXGI_FORMAT_D32_FLOAT;
+        clearValue.DepthStencil.Depth = 1.0f;
+
         D3D12_HEAP_PROPERTIES heapProps = {};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
         heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
         heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-        m_device->CreateTexture2D(heapProps, WINDOW_WIDTH, WINDOW_HEIGHT, 1, DXGI_FORMAT_D32_FLOAT, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, &m_depthStencil);
+        m_device->CreateTexture2D(heapProps, WINDOW_WIDTH, WINDOW_HEIGHT, 1, DXGI_FORMAT_D32_FLOAT, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, &clearValue, &m_depthStencil);
 
         D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc = {};
         descHeapDesc.NumDescriptors = 1;
@@ -550,7 +554,7 @@ void D3D12Context::CreateTexture2D(
     void* initialData,
     ID3D12Resource** ppTexture)
 {
-    m_device->CreateTexture2D(heapProps, width, height, mipLevels, format, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, ppTexture);
+    m_device->CreateTexture2D(heapProps, width, height, mipLevels, format, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, nullptr, ppTexture);
 
     uint32 rowPitch = width * GetDXGIFormatSize(format);
     size_t slicePitch = height * rowPitch;

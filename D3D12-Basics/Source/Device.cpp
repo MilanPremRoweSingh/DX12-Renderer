@@ -142,6 +142,7 @@ void Device::CreateTexture2D(
     D3D12_HEAP_FLAGS heapFlags,
     D3D12_RESOURCE_STATES initialState,
     D3D12_RESOURCE_FLAGS resourceFlags,
+    D3D12_CLEAR_VALUE* clearValue,
     ID3D12Resource** ppTexture)
 {
     D3D12_RESOURCE_DESC desc = {};
@@ -163,7 +164,7 @@ void Device::CreateTexture2D(
         heapFlags,
         &desc,
         initialState, // Required starting state of upload buffer
-        nullptr,
+        clearValue,
         IID_PPV_ARGS(ppTexture)
     ));
 
