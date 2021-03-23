@@ -184,6 +184,16 @@ void D3D12Context::InitialisePipeline()
         m_device->CreateDepthStencilView(m_depthStencil.Get(), &depthStencilDesc, handle);
     }
 
+    // Create SRV/CBV descriptor heap
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+        desc.NumDescriptors = 2;
+        desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+        m_device->CreateDescriptorHeap(desc, &m_generalDescriptorHeap, m_generalDescriptorSize);
+        m_nextGeneralDescriptor= m_generalDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+    }
+
     m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, &m_cmdAllocator);
     
     m_device->CreateFence(0, &m_fence);
@@ -379,12 +389,6 @@ void D3D12Context::LoadInitialAssets()
 
     // Create dumb texture
     {
-        D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-        desc.NumDescriptors = 1;
-        desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-        m_device->CreateDescriptorHeap(desc, &m_srvDescriptorHeap);
-
         D3D12_HEAP_PROPERTIES heapProps = {};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
         heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -392,8 +396,8 @@ void D3D12Context::LoadInitialAssets()
         int32 data = 0xFFFFFFFF;
         CreateTexture2D(heapProps, 1, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &data, &m_texture);
 
-        D3D12_CPU_DESCRIPTOR_HANDLE handle = m_srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-        m_device->CreateShaderResourceView(m_texture.Get(), NULL, handle);
+        m_device->CreateShaderResourceView(m_texture.Get(), NULL, m_nextGeneralDescriptor);
+
     }
 
     // For buffer upload
@@ -443,9 +447,9 @@ void D3D12Context::Draw()
 
     m_cmdList->SetGraphicsRoot32BitConstants(0, sizeof(Matrix4x4) / 4, &matMVPTranspose, 0);
     
-    ID3D12DescriptorHeap* heaps[] = { m_srvDescriptorHeap.Get() };
+    ID3D12DescriptorHeap* heaps[] = { m_generalDescriptorHeap.Get() };
     m_cmdList->SetDescriptorHeaps(1, heaps);
-    m_cmdList->SetGraphicsRootDescriptorTable(1, m_srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+    m_cmdList->SetGraphicsRootDescriptorTable(1, m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
     m_cmdList->RSSetViewports(1, &m_viewport);
     m_cmdList->RSSetScissorRects(1, &m_scissorRect);
@@ -649,4 +653,17 @@ IndexBufferID D3D12Context::CreateIndexBuffer(
 
     indexBuffer.indexCount = indexCount;
     return (IndexBufferID)(m_indexBuffers.size() - 1);
+}
+
+void D3D12Context::CreateConstantBuffer(
+    size_t size)
+{
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+    heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+    m_device->CreateBuffer(heapProps, (uint32)size, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &m_constantBuffer.buffer);
+
+    //m_constantBuffer.cbv.ptr = m_constantBuffer.buffer.Get();
 }

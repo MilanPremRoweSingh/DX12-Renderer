@@ -53,25 +53,25 @@ void Device::CreateDescriptorHeap(
 void Device::CreateRenderTargetView(
     ID3D12Resource* resource,
     D3D12_RENDER_TARGET_VIEW_DESC* desc,
-    D3D12_CPU_DESCRIPTOR_HANDLE& rtvOut)
+    D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor)
 {
-    m_device->CreateRenderTargetView(resource, desc, rtvOut);
+    m_device->CreateRenderTargetView(resource, desc, destDescriptor);
 }
 
 void Device::CreateDepthStencilView(
     ID3D12Resource* resource,
     D3D12_DEPTH_STENCIL_VIEW_DESC* desc,
-    D3D12_CPU_DESCRIPTOR_HANDLE& rtvOut)
+    D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor)
 {
-    m_device->CreateDepthStencilView(resource, desc, rtvOut);
+    m_device->CreateDepthStencilView(resource, desc, destDescriptor);
 }
 
 void Device::CreateShaderResourceView(
     ID3D12Resource* resource,
     D3D12_SHADER_RESOURCE_VIEW_DESC* desc,
-    D3D12_CPU_DESCRIPTOR_HANDLE& rtvOut)
+    D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor)
 {
-    m_device->CreateShaderResourceView(resource, desc, rtvOut);
+    m_device->CreateShaderResourceView(resource, desc, destDescriptor);
 }
 
 void Device::CreateRootSignature(

@@ -33,18 +33,17 @@ public:
     void CreateRenderTargetView(
         ID3D12Resource* resource,
         D3D12_RENDER_TARGET_VIEW_DESC* desc,
-        D3D12_CPU_DESCRIPTOR_HANDLE& rtvOut);
+        D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor);
 
     void CreateDepthStencilView(
         ID3D12Resource* resource,
         D3D12_DEPTH_STENCIL_VIEW_DESC* desc,
-        D3D12_CPU_DESCRIPTOR_HANDLE& rtvOut);
-
+        D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor);
 
     void CreateShaderResourceView(
         ID3D12Resource* resource,
         D3D12_SHADER_RESOURCE_VIEW_DESC* desc,
-        D3D12_CPU_DESCRIPTOR_HANDLE& rtvOut);
+        D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor);
 
     void CreateRootSignature(
         ID3DBlob* signatureBlob,

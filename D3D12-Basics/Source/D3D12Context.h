@@ -36,6 +36,13 @@ struct VertexBuffer
     size_t vertexCount;
 };
 
+struct ConstantBuffer
+{
+    ComPtr<ID3D12Resource> buffer;
+    D3D12_CPU_DESCRIPTOR_HANDLE cbv;
+    size_t size;
+};
+
 // Support a single vertex format for now
 struct Vertex
 {
@@ -97,6 +104,9 @@ public:
         size_t indexCount,
         uint32* indexData);
 
+    void CreateConstantBuffer(
+        size_t size);
+
  private:
 
      void CreateDefaultRootSignature(
@@ -119,7 +129,14 @@ public:
 
      ComPtr<ID3D12RootSignature> m_defaultRootSignature;
 
-     ComPtr<ID3D12DescriptorHeap> m_srvDescriptorHeap;
+     ComPtr<ID3D12DescriptorHeap> m_cbvDescriptorHeap;
+     ConstantBuffer m_constantBuffer;
+
+     // 'General' i.e. CBV + SRV + UAV
+     ComPtr<ID3D12DescriptorHeap> m_generalDescriptorHeap;
+     uint32 m_generalDescriptorSize;
+     CD3DX12_CPU_DESCRIPTOR_HANDLE m_nextGeneralDescriptor;
+
      ComPtr<ID3D12Resource> m_texture;
      
      ComPtr<ID3D12PipelineState> m_pipelineState;
