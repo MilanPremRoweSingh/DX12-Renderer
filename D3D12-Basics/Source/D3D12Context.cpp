@@ -184,14 +184,23 @@ void D3D12Context::InitialisePipeline()
         m_device->CreateDepthStencilView(m_depthStencil.Get(), &depthStencilDesc, handle);
     }
 
-    // Create SRV/CBV descriptor heap
+    // Create General descriptor heap
     {
         D3D12_DESCRIPTOR_HEAP_DESC desc = {};
         desc.NumDescriptors = 2;
         desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
         desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
         m_device->CreateDescriptorHeap(desc, &m_generalDescriptorHeap, m_generalDescriptorSize);
-        m_nextGeneralDescriptor= m_generalDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+        m_nextGeneralDescriptor= { m_generalDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),  m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart() };
+    }
+
+    {
+        D3D12_HEAP_PROPERTIES heapProps = {};
+        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+        m_device->CreateBuffer(heapProps, 256, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &m_constantBuffer);
+
     }
 
     m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, &m_cmdAllocator);
@@ -204,12 +213,12 @@ void D3D12Context::CreateDefaultRootSignature()
     D3D12_ROOT_SIGNATURE_DESC desc = {};
 
     D3D12_ROOT_PARAMETER params[2];
-    D3D12_ROOT_PARAMETER& matViewParam = params[0];
-    matViewParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-    matViewParam.Constants.Num32BitValues = sizeof(Matrix4x4) / 4;
-    matViewParam.Constants.RegisterSpace = 0;
-    matViewParam.Constants.ShaderRegister = 0;
-    matViewParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+    D3D12_ROOT_PARAMETER& cbvParam = params[0];
+    cbvParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    cbvParam.Descriptor.RegisterSpace = 0;
+    cbvParam.Descriptor.ShaderRegister = 0;
+    cbvParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
     D3D12_ROOT_DESCRIPTOR_TABLE table = {};
 
@@ -237,9 +246,9 @@ void D3D12Context::CreateDefaultRootSignature()
     samplerDesc.MaxLOD = 0;
     samplerDesc.ShaderRegister = 0;
     samplerDesc.RegisterSpace = 0;
-    samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
-    desc.NumParameters = 2;
+    desc.NumParameters = _countof(params);
     desc.pParameters = params;
     desc.NumStaticSamplers = 1;
     desc.pStaticSamplers = &samplerDesc;
@@ -396,8 +405,7 @@ void D3D12Context::LoadInitialAssets()
         int32 data = 0xFFFFFFFF;
         CreateTexture2D(heapProps, 1, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &data, &m_texture);
 
-        m_device->CreateShaderResourceView(m_texture.Get(), NULL, m_nextGeneralDescriptor);
-
+        m_device->CreateShaderResourceView(m_texture.Get(), NULL, AllocateGeneralDescriptor().cpuHandle);
     }
 
     // For buffer upload
@@ -405,116 +413,6 @@ void D3D12Context::LoadInitialAssets()
     WaitForGPU();
 }
 
-void D3D12Context::ExecuteCommandList()
-{
-    ASSERT_SUCCEEDED(m_cmdList->Close());
-    ID3D12CommandList* cmdLists[] = { m_cmdList.Get() };
-    m_cmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
-}
-
-void D3D12Context::WaitForGPU()
-{
-    const UINT64 fence = ++m_fenceValue;
-    ASSERT_SUCCEEDED(m_cmdQueue->Signal(m_fence.Get(), fence));
-
-    if (m_fence->GetCompletedValue() < m_fenceValue)
-    {
-        ASSERT_SUCCEEDED(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
-        WaitForSingleObject(m_fenceEvent, INFINITE);
-    }
-}
-
-void D3D12Context::Draw()
-{
-    ASSERT_SUCCEEDED(m_cmdAllocator->Reset());
-    ASSERT_SUCCEEDED(m_cmdList->Reset(m_cmdAllocator.Get(), m_pipelineState.Get()));
-
-    m_cmdList->SetGraphicsRootSignature(m_defaultRootSignature.Get());
-
-    float radius = 10.0f;
-    float time = GetCurrentFrameTime();
-
-    // This is terrible, but fine for now
-    Vector3 eyePos(radius * cosf(time), 0.0f, radius * sinf(time));
-    Vector3 targetPos;
-    Vector3 camUp(0.0f, 1.0f, 0.0f);
-    camUp.Normalize();
-    Camera cam(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
-    Matrix4x4 matMVP;
-    cam.GetViewProjMatrix(matMVP);
-    Matrix4x4 matMVPTranspose;
-    matMVP.Transpose(matMVPTranspose);
-
-    m_cmdList->SetGraphicsRoot32BitConstants(0, sizeof(Matrix4x4) / 4, &matMVPTranspose, 0);
-    
-    ID3D12DescriptorHeap* heaps[] = { m_generalDescriptorHeap.Get() };
-    m_cmdList->SetDescriptorHeaps(1, heaps);
-    m_cmdList->SetGraphicsRootDescriptorTable(1, m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-
-    m_cmdList->RSSetViewports(1, &m_viewport);
-    m_cmdList->RSSetScissorRects(1, &m_scissorRect);
-
-    // Transition back buffer to rt
-    {
-        D3D12_RESOURCE_TRANSITION_BARRIER transition;
-        transition.pResource = m_renderTargets[m_frameIndex].Get();
-        transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-        transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        transition.Subresource = 0;
-
-        D3D12_RESOURCE_BARRIER barrier;
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.Transition = transition;
-
-        m_cmdList->ResourceBarrier(1, &barrier);
-    }
-
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
-    rtvHandle.ptr = m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + (UINT64)m_frameIndex * (UINT64)m_rtvDescriptorSize;
-
-    D3D12_CPU_DESCRIPTOR_HANDLE dsvHadle = m_dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-
-    m_cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHadle);
-
-    // Draw
-    const float clearColor[] = { 86.0f / 255.0f, 0.0f / 255.0f, 94.0f / 255.0f, 1.0f };
-    m_cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-    m_cmdList->ClearDepthStencilView(dsvHadle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-    m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBuffers[0].view);
-    m_cmdList->IASetIndexBuffer(&m_indexBuffers[0].view);
-    m_cmdList->DrawIndexedInstanced((uint32)m_indexBuffers[0].indexCount, 1, 0, 0, 0);
-
-    // Transition back buffer to present
-    {
-        D3D12_RESOURCE_TRANSITION_BARRIER transition;
-        transition.pResource = m_renderTargets[m_frameIndex].Get();
-        transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-        transition.Subresource = 0;
-
-        D3D12_RESOURCE_BARRIER barrier;
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.Transition = transition;
-
-        m_cmdList->ResourceBarrier(1, &barrier);
-    }
-    
-    ExecuteCommandList();
-}
-
-void D3D12Context::Present()
-{
-    ASSERT_SUCCEEDED(m_swapChain3->Present(1, 0));
-
-    WaitForGPU();
-
-    m_frameIndex = m_swapChain3->GetCurrentBackBufferIndex();
-
-    m_uploadStream->ResetAllocations();
-}
 
 void D3D12Context::CreateBuffer(
     const D3D12_HEAP_PROPERTIES& heapProps,
@@ -527,7 +425,7 @@ void D3D12Context::CreateBuffer(
     m_device->CreateBuffer(heapProps, size, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, ppBuffer);
 
     UploadStream::Allocation uploadBufferAlloc = m_uploadStream->Allocate(size);
-    memcpy(uploadBufferAlloc.cpuAddr, initialData, size);    
+    memcpy(uploadBufferAlloc.cpuAddr, initialData, size);
     m_cmdList->CopyBufferRegion(*ppBuffer, 0, uploadBufferAlloc.buffer, uploadBufferAlloc.offset, size);
     if (initialState != D3D12_RESOURCE_STATE_COPY_DEST)
     {
@@ -545,7 +443,6 @@ void D3D12Context::CreateBuffer(
         m_cmdList->ResourceBarrier(1, &barrier);
     }
 }
-
 
 void D3D12Context::CreateTexture2D(
     const D3D12_HEAP_PROPERTIES& heapProps,
@@ -655,15 +552,130 @@ IndexBufferID D3D12Context::CreateIndexBuffer(
     return (IndexBufferID)(m_indexBuffers.size() - 1);
 }
 
-void D3D12Context::CreateConstantBuffer(
-    size_t size)
+D3D12_DESCRIPTOR_ADDRESS D3D12Context::AllocateGeneralDescriptor(
+    void)
 {
-    D3D12_HEAP_PROPERTIES heapProps = {};
-    heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-    heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-    heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+    D3D12_DESCRIPTOR_ADDRESS curr = m_nextGeneralDescriptor;
+    m_nextGeneralDescriptor.cpuHandle.ptr += m_generalDescriptorSize;
+    m_nextGeneralDescriptor.gpuHandle.ptr += m_generalDescriptorSize;
+    return curr;
+}
 
-    m_device->CreateBuffer(heapProps, (uint32)size, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &m_constantBuffer.buffer);
 
-    //m_constantBuffer.cbv.ptr = m_constantBuffer.buffer.Get();
+void D3D12Context::ExecuteCommandList()
+{
+    ASSERT_SUCCEEDED(m_cmdList->Close());
+    ID3D12CommandList* cmdLists[] = { m_cmdList.Get() };
+    m_cmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
+}
+
+void D3D12Context::WaitForGPU()
+{
+    const UINT64 fence = ++m_fenceValue;
+    ASSERT_SUCCEEDED(m_cmdQueue->Signal(m_fence.Get(), fence));
+
+    if (m_fence->GetCompletedValue() < m_fenceValue)
+    {
+        ASSERT_SUCCEEDED(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
+        WaitForSingleObject(m_fenceEvent, INFINITE);
+    }
+}
+
+void D3D12Context::Draw()
+{
+    ASSERT_SUCCEEDED(m_cmdAllocator->Reset());
+    ASSERT_SUCCEEDED(m_cmdList->Reset(m_cmdAllocator.Get(), m_pipelineState.Get()));
+
+    m_cmdList->SetGraphicsRootSignature(m_defaultRootSignature.Get());
+
+    float radius = 10.0f;
+    float time = GetCurrentFrameTime();
+
+    // This is terrible, but fine for now
+    void* cbData;
+    Vector3 eyePos(radius * cosf(time), 0.0f, radius * sinf(time));
+    Vector3 targetPos;
+    Vector3 camUp(0.0f, 1.0f, 0.0f);
+    camUp.Normalize();
+    Camera cam(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
+    Matrix4x4 matMVP;
+    cam.GetViewProjMatrix(matMVP);
+    Matrix4x4 matMVPTranspose;
+    matMVP.Transpose(matMVPTranspose);
+
+    D3D12_RANGE range = { 0,0 };
+    m_constantBuffer->Map(0, &range, &cbData);
+    memcpy(cbData, &matMVPTranspose, sizeof(Matrix4x4));
+    range = { 0, sizeof(Matrix4x4)};
+    m_constantBuffer->Unmap(0, &range);
+
+    m_cmdList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress());
+
+    ID3D12DescriptorHeap* heaps[] = { m_generalDescriptorHeap.Get() };
+    m_cmdList->SetDescriptorHeaps(1, heaps);
+    m_cmdList->SetGraphicsRootDescriptorTable(1, m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+
+    m_cmdList->RSSetViewports(1, &m_viewport);
+    m_cmdList->RSSetScissorRects(1, &m_scissorRect);
+
+    // Transition back buffer to rt
+    {
+        D3D12_RESOURCE_TRANSITION_BARRIER transition;
+        transition.pResource = m_renderTargets[m_frameIndex].Get();
+        transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+        transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        transition.Subresource = 0;
+
+        D3D12_RESOURCE_BARRIER barrier;
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition = transition;
+
+        m_cmdList->ResourceBarrier(1, &barrier);
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
+    rtvHandle.ptr = m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + (UINT64)m_frameIndex * (UINT64)m_rtvDescriptorSize;
+
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHadle = m_dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+
+    m_cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHadle);
+
+    // Draw
+    const float clearColor[] = { 86.0f / 255.0f, 0.0f / 255.0f, 94.0f / 255.0f, 1.0f };
+    m_cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    m_cmdList->ClearDepthStencilView(dsvHadle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+    m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBuffers[0].view);
+    m_cmdList->IASetIndexBuffer(&m_indexBuffers[0].view);
+    m_cmdList->DrawIndexedInstanced((uint32)m_indexBuffers[0].indexCount, 1, 0, 0, 0);
+
+    // Transition back buffer to present
+    {
+        D3D12_RESOURCE_TRANSITION_BARRIER transition;
+        transition.pResource = m_renderTargets[m_frameIndex].Get();
+        transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+        transition.Subresource = 0;
+
+        D3D12_RESOURCE_BARRIER barrier;
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition = transition;
+
+        m_cmdList->ResourceBarrier(1, &barrier);
+    }
+    
+    ExecuteCommandList();
+}
+
+void D3D12Context::Present()
+{
+    ASSERT_SUCCEEDED(m_swapChain3->Present(1, 0));
+
+    WaitForGPU();
+
+    m_frameIndex = m_swapChain3->GetCurrentBackBufferIndex();
+
+    m_uploadStream->ResetAllocations();
 }

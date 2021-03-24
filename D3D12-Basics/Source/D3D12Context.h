@@ -39,7 +39,7 @@ struct VertexBuffer
 struct ConstantBuffer
 {
     ComPtr<ID3D12Resource> buffer;
-    D3D12_CPU_DESCRIPTOR_HANDLE cbv;
+    D3D12_DESCRIPTOR_ADDRESS view;
     size_t size;
 };
 
@@ -63,18 +63,6 @@ public:
         void);
 
     void LoadInitialAssets(
-        void);
-
-    void ExecuteCommandList(
-        void);
-
-    void WaitForGPU(
-        void);
-
-    void Draw(
-        void);
-
-    void Present(
         void);
 
     void CreateBuffer(
@@ -104,8 +92,20 @@ public:
         size_t indexCount,
         uint32* indexData);
 
-    void CreateConstantBuffer(
-        size_t size);
+    D3D12_DESCRIPTOR_ADDRESS AllocateGeneralDescriptor(
+        void);
+
+    void ExecuteCommandList(
+        void);
+
+    void WaitForGPU(
+        void);
+
+    void Draw(
+        void);
+
+    void Present(
+        void);
 
  private:
 
@@ -129,13 +129,12 @@ public:
 
      ComPtr<ID3D12RootSignature> m_defaultRootSignature;
 
-     ComPtr<ID3D12DescriptorHeap> m_cbvDescriptorHeap;
-     ConstantBuffer m_constantBuffer;
+     ComPtr<ID3D12Resource> m_constantBuffer;
 
      // 'General' i.e. CBV + SRV + UAV
      ComPtr<ID3D12DescriptorHeap> m_generalDescriptorHeap;
      uint32 m_generalDescriptorSize;
-     CD3DX12_CPU_DESCRIPTOR_HANDLE m_nextGeneralDescriptor;
+     D3D12_DESCRIPTOR_ADDRESS m_nextGeneralDescriptor;
 
      ComPtr<ID3D12Resource> m_texture;
      

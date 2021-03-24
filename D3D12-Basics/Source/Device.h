@@ -45,6 +45,10 @@ public:
         D3D12_SHADER_RESOURCE_VIEW_DESC* desc,
         D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor);
 
+    void CreateConstantBufferView(
+        D3D12_CONSTANT_BUFFER_VIEW_DESC* desc,
+        D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor);
+
     void CreateRootSignature(
         ID3DBlob* signatureBlob,
         ID3D12RootSignature** rootSignature);

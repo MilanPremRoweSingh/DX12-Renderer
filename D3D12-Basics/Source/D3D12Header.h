@@ -6,6 +6,12 @@ using Microsoft::WRL::ComPtr;
 
 #define ASSERT_SUCCEEDED(x) {HRESULT result = x; assert(SUCCEEDED(result));} 
 
+struct D3D12_DESCRIPTOR_ADDRESS
+{
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
+    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle;
+};
+
 inline uint32 GetDXGIFormatSize(DXGI_FORMAT dxgiFormat)
 {
     assert(dxgiFormat != DXGI_FORMAT_R1_UNORM);

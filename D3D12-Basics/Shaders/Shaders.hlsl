@@ -1,8 +1,8 @@
 #include "Lighting.h"
 
-cbuffer Constants0
+cbuffer Constants0 : register(b0)
 {
-	float4x4 mat;
+	float4x4 matMVP;
 };
 
 SamplerState Sampler;
@@ -32,8 +32,8 @@ VS_OUT VSMain(VS_IN I)
 {
 	VS_OUT O;
 	O.col = I.col;
-	O.pos = mul(mat, float4(I.pos + float3(0,0,0), 1.0f));
-	O.normal = mul(mat, float4(I.normal, 0.0f)).xyz;
+	O.pos = mul(matMVP, float4(I.pos + float3(0,0,0), 1.0f));
+	O.normal = mul(matMVP, float4(I.normal, 0.0f)).xyz;
 	return O;
 }
 
