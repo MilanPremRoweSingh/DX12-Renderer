@@ -6,6 +6,7 @@ const wchar_t* lpszWindowClassName = L"Window Class Name";
 const wchar_t* lpszWindowName = L"Window Class Name";
 
 HWND hWnd = NULL;
+bool trapCursor;
 
 static void sParseCmdLine()
 {
@@ -43,15 +44,44 @@ static LRESULT CALLBACK sWindowProc(
 )
 {
     LRESULT result = 0;
-    switch (wParam)
+    switch (uMsg)
     {
-        default:
+        case WM_MOUSEMOVE:
         {
-            result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+            if (trapCursor)
+            {
+                RECT wRect;
+                GetWindowRect(hWnd, &wRect);
+                uint32 width = wRect.right - wRect.left;
+                uint32 height = wRect.bottom - wRect.top;
+                SetCursorPos(wRect.left + width / 2, wRect.top + height / 2);
+            }
+        } break;
+
+
+        case WM_LBUTTONUP:
+        case WM_RBUTTONUP:
+        {
+            trapCursor = true;
+            ShowCursor(false);
+        } break;
+
+        case WM_KEYUP:
+        {
+            if (wParam == VK_ESCAPE)
+            {
+                trapCursor = false;
+                ShowCursor(true);
+            }
         }
+
+        default:
+            goto _default;
     }
 
     return result;
+_default:
+    return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 static void sCreateWindow(
@@ -81,6 +111,8 @@ static void sCreateWindow(
     if (hWnd)
     {
         ShowWindow(hWnd, SW_SHOW);
+        trapCursor = true;
+        ShowCursor(false);
     }
 }
 
