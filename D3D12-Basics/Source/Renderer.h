@@ -1,6 +1,14 @@
 #pragma once
 
-class D3D12Context;
+class D3D12Core;
+struct RenderConstants;
+struct RenderConstantEntry;
+struct RenderContext;
+struct ConstantDataEntry;
+
+#define NUM_SWAP_CHAIN_BUFFERS 2
+// For now assume all shaders are in the same file
+#define SHADER_FILE L"../Shaders/Shaders.hlsl"
 
 class Renderer 
 {
@@ -10,12 +18,19 @@ public:
 
     void Render();
 
+    void ConstantDataSetEntry(
+        const ConstantDataEntry& entry,
+        void* data);
+    
+    void ConstantDataFlush(
+        void);
+
 private:
 
-    D3D12Context* ptContext;
-};
+    void ConstantDataInitialise();
+    void ConstantDataDispose();
 
-#define NUM_SWAP_CHAIN_BUFFERS 2
-// For now assume all shaders are in the same file
-#define SHADER_FILE L"../Shaders/Shaders.hlsl"
+    D3D12Core* m_core;   
+    RenderContext* m_context;
+};
 

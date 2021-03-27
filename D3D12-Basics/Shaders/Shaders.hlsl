@@ -1,6 +1,6 @@
 #include "Lighting.h"
 
-cbuffer Constants0 : register(b0)
+cbuffer ConstantBuffer : register(b0)
 {
 	float4x4 matMVP;
 };

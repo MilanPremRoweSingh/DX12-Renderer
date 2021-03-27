@@ -1,14 +1,12 @@
-#include "D3D12Context.h"
+#include "D3D12Core.h"
 
 #include <d3dcompiler.h>
 
 #include "D3D12Header.h"   
 #include "Shell.h"
 #include "Engine.h"
-#include "Utils.h"
 
 // We won't want to include these but we're doing it for now so we can build enough functionality to be able to restructure it when we a) have enough idea of the functionality we want and b) would actually benefit from doing so.
-#include "Camera.h"
 #include <assimp/postprocess.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -54,7 +52,7 @@ static void sCompileShader(const char* entryPoint, bool fIsVertexShader, ID3DBlo
 
 // Member Functions  ///////////////////////////////////////////////////////////////////////
 
-D3D12Context::D3D12Context()
+D3D12Core::D3D12Core()
 {
     if (globals.fD3DDebug)
     {
@@ -85,16 +83,16 @@ D3D12Context::D3D12Context()
     m_uploadStream = new UploadStream(m_device);
 
     InitialisePipeline();
-    LoadInitialAssets();
+    InitialAssetsLoad();
 }
 
-D3D12Context::~D3D12Context()
+D3D12Core::~D3D12Core()
 {
     delete m_uploadStream;
     delete m_device;
 }
 
-void D3D12Context::InitialisePipeline()
+void D3D12Core::InitialisePipeline()
 {
 
     // Create Command Queue
@@ -194,31 +192,28 @@ void D3D12Context::InitialisePipeline()
         m_nextGeneralDescriptor= { m_generalDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),  m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart() };
     }
 
-    {
-        D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-        m_device->CreateBuffer(heapProps, 256, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &m_constantBuffer);
-
-    }
+    ConstantBuffersInit();
 
     m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, &m_cmdAllocator);
     
     m_device->CreateFence(0, &m_fence);
 }
 
-void D3D12Context::CreateDefaultRootSignature()
+void D3D12Core::CreateDefaultRootSignature()
 {
     D3D12_ROOT_SIGNATURE_DESC desc = {};
 
-    D3D12_ROOT_PARAMETER params[2];
+    D3D12_ROOT_PARAMETER params[CBCount + 1];
+    uint32 idxParam = 0;
 
-    D3D12_ROOT_PARAMETER& cbvParam = params[0];
-    cbvParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    cbvParam.Descriptor.RegisterSpace = 0;
-    cbvParam.Descriptor.ShaderRegister = 0;
-    cbvParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    for (int32 id = 0; id < CBCount; id++)
+    {
+        D3D12_ROOT_PARAMETER& cbvParam = params[idxParam++];
+        cbvParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        cbvParam.Descriptor.RegisterSpace = 0;
+        cbvParam.Descriptor.ShaderRegister = id;
+        cbvParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    }
 
     D3D12_ROOT_DESCRIPTOR_TABLE table = {};
 
@@ -231,7 +226,7 @@ void D3D12Context::CreateDefaultRootSignature()
     table.NumDescriptorRanges = 1;
     table.pDescriptorRanges = &range;
 
-    D3D12_ROOT_PARAMETER& textureTableParam = params[1];
+    D3D12_ROOT_PARAMETER& textureTableParam = params[idxParam++];
     textureTableParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     textureTableParam.DescriptorTable = table;
     textureTableParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
@@ -248,7 +243,7 @@ void D3D12Context::CreateDefaultRootSignature()
     samplerDesc.RegisterSpace = 0;
     samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
-    desc.NumParameters = _countof(params);
+    desc.NumParameters = idxParam;
     desc.pParameters = params;
     desc.NumStaticSamplers = 1;
     desc.pStaticSamplers = &samplerDesc;
@@ -261,7 +256,33 @@ void D3D12Context::CreateDefaultRootSignature()
     m_device->CreateRootSignature(signature.Get(), &m_defaultRootSignature);
 }
 
-static void sLoadTeapot(D3D12Context& context)
+void D3D12Core::ConstantBuffersInit(
+    void)
+{
+    for (int32 id = CBStart; id < CBCount; id++)
+    {
+        D3D12_HEAP_PROPERTIES heapProps = {};
+        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+        m_device->CreateBuffer(heapProps, Utils::AlignUp(g_cbSizes[id], (size_t)D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT), D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &m_constantBuffers[id]);
+    }
+}
+
+void D3D12Core::ConstantBufferSetData(
+    ConstantBufferID id,
+    size_t size,
+    void* data)
+{
+    D3D12_RANGE range = { 0,0 };
+    void* cbData;
+    m_constantBuffers[id]->Map(0, &range, &cbData);
+    memcpy(cbData, data, g_cbSizes[id]);
+    range = { 0, g_cbSizes[id] };
+    m_constantBuffers[id]->Unmap(0, &range);
+}
+
+static void sLoadTeapot(D3D12Core& context)
 {
     Assimp::Importer importer;
 
@@ -297,7 +318,7 @@ static void sLoadTeapot(D3D12Context& context)
         }
 
     }
-    context.CreateVertexBuffer(teapot->mNumVertices, verts);
+    context.VertexBufferCreate(teapot->mNumVertices, verts);
 
     // Create Index Buffer
     std::vector<uint32> indices;
@@ -310,10 +331,10 @@ static void sLoadTeapot(D3D12Context& context)
             indices.push_back(face.mIndices[indexIndex]);
         }
     }
-    context.CreateIndexBuffer(indices.size(), indices.data());
+    context.IndexBufferCreate(indices.size(), indices.data());
 }
 
-static void sLoadCube(D3D12Context& context)
+static void sLoadCube(D3D12Core& context)
 {
     // With Normals now, we need to dupe verts for it work properly if we want proper shading
     Vertex verts[] = {
@@ -326,7 +347,7 @@ static void sLoadCube(D3D12Context& context)
         { { -1, -1, 1 }, { 0.0f, 0.0f, 1.0f, 1.0f }, {1.0f, 1.0f, 1.0f} },
         { { -1, -1, -1 }, { 0.0f, 0.0f, 0.0f, 1.0f }, {1.0f, 1.0f, 1.0f} },
     };
-    context.CreateVertexBuffer(_countof(verts), verts);
+    context.VertexBufferCreate(_countof(verts), verts);
 
     uint32 indexData[] = {
     // Front Face
@@ -348,10 +369,10 @@ static void sLoadCube(D3D12Context& context)
         1, 3, 7,
         7, 5 ,1,
     };
-    context.CreateIndexBuffer(_countof(indexData), indexData);
+    context.IndexBufferCreate(_countof(indexData), indexData);
 }
 
-void D3D12Context::LoadInitialAssets()
+void D3D12Core::InitialAssetsLoad()
 {
     CreateDefaultRootSignature();
 
@@ -403,18 +424,17 @@ void D3D12Context::LoadInitialAssets()
         heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
         heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
         int32 data = 0xFFFFFFFF;
-        CreateTexture2D(heapProps, 1, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &data, &m_texture);
+        Texture2DCreate(heapProps, 1, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &data, &m_texture);
 
         m_device->CreateShaderResourceView(m_texture.Get(), NULL, AllocateGeneralDescriptor().cpuHandle);
     }
 
     // For buffer upload
-    ExecuteCommandList();
+    CommandListExecute();
     WaitForGPU();
 }
 
-
-void D3D12Context::CreateBuffer(
+void D3D12Core::BufferCreate(
     const D3D12_HEAP_PROPERTIES& heapProps,
     uint32 size,
     D3D12_HEAP_FLAGS heapFlags,
@@ -444,7 +464,7 @@ void D3D12Context::CreateBuffer(
     }
 }
 
-void D3D12Context::CreateTexture2D(
+void D3D12Core::Texture2DCreate(
     const D3D12_HEAP_PROPERTIES& heapProps,
     uint32 width,
     uint32 height,
@@ -504,7 +524,7 @@ void D3D12Context::CreateTexture2D(
     }
 }
 
-VertexBufferID D3D12Context::CreateVertexBuffer(
+VertexBufferID D3D12Core::VertexBufferCreate(
     size_t vertexCount,
     Vertex* vertexData)
 {
@@ -518,7 +538,7 @@ VertexBufferID D3D12Context::CreateVertexBuffer(
     heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
     heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-    CreateBuffer(heapProps, (uint32)vertsTotalSize, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)vertexData, &vertexBuffer.buffer);
+    BufferCreate(heapProps, (uint32)vertsTotalSize, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)vertexData, &vertexBuffer.buffer);
 
     vertexBuffer.view.BufferLocation = vertexBuffer.buffer->GetGPUVirtualAddress();
     vertexBuffer.view.StrideInBytes = sizeof(Vertex);
@@ -528,7 +548,7 @@ VertexBufferID D3D12Context::CreateVertexBuffer(
     return (VertexBufferID)(m_vertexBuffers.size() - 1);
 }
 
-IndexBufferID D3D12Context::CreateIndexBuffer(
+IndexBufferID D3D12Core::IndexBufferCreate(
     size_t indexCount,
     uint32* indexData)
 {
@@ -542,7 +562,7 @@ IndexBufferID D3D12Context::CreateIndexBuffer(
     heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
     heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-    CreateBuffer(heapProps, (uint32)indexTotalSize, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)indexData, &indexBuffer.buffer);
+    BufferCreate(heapProps, (uint32)indexTotalSize, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)indexData, &indexBuffer.buffer);
 
     indexBuffer.view.BufferLocation = indexBuffer.buffer->GetGPUVirtualAddress();
     indexBuffer.view.SizeInBytes = sizeof(uint32) * (uint32)indexCount;
@@ -552,7 +572,7 @@ IndexBufferID D3D12Context::CreateIndexBuffer(
     return (IndexBufferID)(m_indexBuffers.size() - 1);
 }
 
-D3D12_DESCRIPTOR_ADDRESS D3D12Context::AllocateGeneralDescriptor(
+D3D12_DESCRIPTOR_ADDRESS D3D12Core::AllocateGeneralDescriptor(
     void)
 {
     D3D12_DESCRIPTOR_ADDRESS curr = m_nextGeneralDescriptor;
@@ -562,14 +582,14 @@ D3D12_DESCRIPTOR_ADDRESS D3D12Context::AllocateGeneralDescriptor(
 }
 
 
-void D3D12Context::ExecuteCommandList()
+void D3D12Core::CommandListExecute()
 {
     ASSERT_SUCCEEDED(m_cmdList->Close());
     ID3D12CommandList* cmdLists[] = { m_cmdList.Get() };
     m_cmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 }
 
-void D3D12Context::WaitForGPU()
+void D3D12Core::WaitForGPU()
 {
     const UINT64 fence = ++m_fenceValue;
     ASSERT_SUCCEEDED(m_cmdQueue->Signal(m_fence.Get(), fence));
@@ -581,38 +601,21 @@ void D3D12Context::WaitForGPU()
     }
 }
 
-void D3D12Context::Draw()
+void D3D12Core::Draw()
 {
     ASSERT_SUCCEEDED(m_cmdAllocator->Reset());
     ASSERT_SUCCEEDED(m_cmdList->Reset(m_cmdAllocator.Get(), m_pipelineState.Get()));
 
     m_cmdList->SetGraphicsRootSignature(m_defaultRootSignature.Get());
 
-    float radius = 10.0f;
-    float time = GetCurrentFrameTime();
-
-    // This is terrible, but fine for now
-    void* cbData;
-    Vector3 eyePos(radius * cosf(time), 0.0f, radius * sinf(time));
-    Vector3 targetPos;
-    Vector3 camUp(0.0f, 1.0f, 0.0f);
-    camUp.Normalize();
-    Camera cam(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
-    Matrix4x4 matMVP;
-    cam.GetViewProjMatrix(matMVP);
-    Matrix4x4 matMVPTranspose;
-    matMVP.Transpose(matMVPTranspose);
-
-    D3D12_RANGE range = { 0,0 };
-    m_constantBuffer->Map(0, &range, &cbData);
-    memcpy(cbData, &matMVPTranspose, sizeof(Matrix4x4));
-    range = { 0, sizeof(Matrix4x4)};
-    m_constantBuffer->Unmap(0, &range);
-
-    m_cmdList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress());
+    uint32 rootParamIdx = 0;
+    for (int32 id = CBStart; id < CBCount; id++)
+    {
+        m_cmdList->SetGraphicsRootConstantBufferView(rootParamIdx++, m_constantBuffers[id]->GetGPUVirtualAddress());
+    }
 
     ID3D12DescriptorHeap* heaps[] = { m_generalDescriptorHeap.Get() };
-    m_cmdList->SetDescriptorHeaps(1, heaps);
+    m_cmdList->SetDescriptorHeaps(rootParamIdx++, heaps);
     m_cmdList->SetGraphicsRootDescriptorTable(1, m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
     m_cmdList->RSSetViewports(1, &m_viewport);
@@ -666,10 +669,10 @@ void D3D12Context::Draw()
         m_cmdList->ResourceBarrier(1, &barrier);
     }
     
-    ExecuteCommandList();
+    CommandListExecute();
 }
 
-void D3D12Context::Present()
+void D3D12Core::Present()
 {
     ASSERT_SUCCEEDED(m_swapChain3->Present(1, 0));
 

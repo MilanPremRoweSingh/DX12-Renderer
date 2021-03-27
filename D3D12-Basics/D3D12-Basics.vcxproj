@@ -159,7 +159,7 @@
   <ItemGroup>
     <ClCompile Include="Source\Device.cpp" />
     <ClCompile Include="Source\Camera.cpp" />
-    <ClCompile Include="Source\D3D12Context.cpp" />
+    <ClCompile Include="Source\D3D12Core.cpp" />
     <ClCompile Include="Source\Engine.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -171,10 +171,11 @@
     <ClCompile Include="Source\UploadStream.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\ConstantBuffers.h" />
     <ClInclude Include="Source\D3D12Header.h" />
     <ClInclude Include="Source\Device.h" />
     <ClInclude Include="Source\Camera.h" />
-    <ClInclude Include="Source\D3D12Context.h" />
+    <ClInclude Include="Source\D3D12Core.h" />
     <ClInclude Include="Source\Engine.h" />
     <ClInclude Include="Source\EnginePCH.h" />
     <ClInclude Include="Source\Globals.h" />

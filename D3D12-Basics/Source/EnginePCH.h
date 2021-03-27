@@ -2,7 +2,6 @@
 
 #include "Types.h"
 #include "Globals.h"
-
 #define NOMINMAX
 
 #include <assert.h>
@@ -40,3 +39,5 @@ typedef DirectX::SimpleMath::Vector3 Vector3;
 #else
 #define ASSERT(X) 
 #endif
+
+#include "Utils.h"

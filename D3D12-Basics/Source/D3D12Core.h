@@ -3,6 +3,7 @@
 #include <dxgi1_6.h>
 #include <vector>
 
+#include "ConstantBuffers.h"
 #include "Renderer.h"
 #include "D3D12Header.h"
 #include "Device.h"
@@ -53,19 +54,19 @@ struct Vertex
 
 // Classes /////////////////////////////////////////////////////////////////////////////////
 
-class D3D12Context
+class D3D12Core
 {
 public:
-    D3D12Context();
-    ~D3D12Context();
+    D3D12Core();
+    ~D3D12Core();
 
     void InitialisePipeline(
         void);
 
-    void LoadInitialAssets(
+    void InitialAssetsLoad(
         void);
 
-    void CreateBuffer(
+    void BufferCreate(
         const D3D12_HEAP_PROPERTIES& heapProps,
         uint32 size,
         D3D12_HEAP_FLAGS heapFlags,
@@ -73,7 +74,7 @@ public:
         void* initialData,
         ID3D12Resource** ppBuffer);
 
-    void CreateTexture2D(
+    void Texture2DCreate(
         const D3D12_HEAP_PROPERTIES& heapProps,
         uint32 width,
         uint32 height,
@@ -84,18 +85,20 @@ public:
         void* initialData,
         ID3D12Resource** ppTexture);
 
-    VertexBufferID CreateVertexBuffer(
+    VertexBufferID VertexBufferCreate(
         size_t vertexCount,
         Vertex* vertexData);
 
-    IndexBufferID CreateIndexBuffer(
+    IndexBufferID IndexBufferCreate(
         size_t indexCount,
         uint32* indexData);
 
-    D3D12_DESCRIPTOR_ADDRESS AllocateGeneralDescriptor(
-        void);
+    void ConstantBufferSetData(
+        ConstantBufferID id,
+        size_t size,
+        void* data);
 
-    void ExecuteCommandList(
+    void CommandListExecute(
         void);
 
     void WaitForGPU(
@@ -107,10 +110,18 @@ public:
     void Present(
         void);
 
- private:
+
+private:
+
+    D3D12_DESCRIPTOR_ADDRESS AllocateGeneralDescriptor(
+        void);
 
      void CreateDefaultRootSignature(
          void);
+
+     void ConstantBuffersInit(
+        void);
+
 
      D3D12_VIEWPORT m_viewport;
      D3D12_RECT  m_scissorRect;
@@ -129,7 +140,7 @@ public:
 
      ComPtr<ID3D12RootSignature> m_defaultRootSignature;
 
-     ComPtr<ID3D12Resource> m_constantBuffer;
+     ComPtr<ID3D12Resource> m_constantBuffers[CBCount];
 
      // 'General' i.e. CBV + SRV + UAV
      ComPtr<ID3D12DescriptorHeap> m_generalDescriptorHeap;

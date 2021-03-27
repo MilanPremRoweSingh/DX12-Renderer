@@ -1,7 +1,5 @@
 #include "UploadStream.h"
 
-#include "Utils.h"
-
 UploadStream::UploadStream(Device* device, size_t pageSize)
 {
     assert(device != nullptr);
