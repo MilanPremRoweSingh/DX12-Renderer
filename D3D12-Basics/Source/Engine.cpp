@@ -29,7 +29,7 @@ void EngineInitialise()
     Vector3 camUp(0.0f, 1.0f, 0.0f);
     camUp.Normalize();
     camera = Camera(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
-    gptRenderer->CameraSet(camera);
+    gptRenderer->CameraSet(&camera);
 }
 
 void EngineDispose()

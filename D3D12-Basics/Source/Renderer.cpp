@@ -11,7 +11,7 @@ size_t g_cbSizes[CBCount] = {
 
 struct RenderContext
 {    
-    Camera camera;
+    const Camera* camera;
 
     ConstantData* constantData[CBCount];
     uint32 dirtyCBFlags;
@@ -61,7 +61,7 @@ void Renderer::ConstantDataFlush(
 }
 
 void Renderer::CameraSet(
-    const Camera& camera)
+    const Camera* camera)
 {
     m_context->camera = camera;
 }
@@ -84,13 +84,18 @@ Renderer::~Renderer()
 
 void Renderer::Render()
 {
+    if (!m_context->camera)
+    {
+        return;
+    }
+
     Matrix4x4 matView;
-    m_context->camera.GetViewMatrix(matView);
+    m_context->camera->GetViewMatrix(matView);
     matView.Transpose(matView);
     ConstantDataSetEntry(CBSTATIC_ENTRY(matView), &matView);
 
     Matrix4x4 matProj;
-    m_context->camera.GetProjMatrix(matProj);
+    m_context->camera->GetProjMatrix(matProj);
     matProj.Transpose(matProj);
     ConstantDataSetEntry(CBSTATIC_ENTRY(matProj), &matProj);
 

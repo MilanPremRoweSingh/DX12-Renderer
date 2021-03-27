@@ -27,7 +27,7 @@ public:
         void);
 
     void CameraSet(
-        const Camera& camera);
+        const Camera* camera);
 
 private:
 

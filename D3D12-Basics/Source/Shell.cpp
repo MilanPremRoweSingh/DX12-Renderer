@@ -68,7 +68,7 @@ static LRESULT CALLBACK sWindowProc(
 
                 Vector2 input = {
                     (mousePos.x - origin.x) / float(width) ,
-                    (mousePos.y - origin.y) / float(height) };
+                    (origin.y - mousePos.y) / float(height) };
 
                 EngineBufferMouseInput(input);
             }
