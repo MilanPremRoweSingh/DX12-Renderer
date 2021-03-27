@@ -39,8 +39,6 @@ static DWORD sGetWindowStyle()
     return WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
 }
 
-#include <string>
-
 static LRESULT CALLBACK sWindowProc(
     _In_ HWND   hwnd,
     _In_ UINT   uMsg,
@@ -73,7 +71,6 @@ static LRESULT CALLBACK sWindowProc(
                     (mousePos.y - origin.y) / float(height) };
 
                 EngineBufferMouseInput(input);
-
             }
         } break;
 
