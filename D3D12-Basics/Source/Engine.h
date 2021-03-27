@@ -10,4 +10,7 @@ void EngineUpdate();
 
 void EngineIdle();
 
+void EngineBufferMouseInput(
+    const Vector2& input);
+
 float GetCurrentFrameTime();

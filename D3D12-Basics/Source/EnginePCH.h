@@ -11,6 +11,7 @@
 typedef DirectX::SimpleMath::Matrix Matrix4x4;
 typedef DirectX::SimpleMath::Vector4 Vector4;
 typedef DirectX::SimpleMath::Vector3 Vector3;
+typedef DirectX::SimpleMath::Vector2 Vector2;
 
 #define F_PI 3.14159265358979323846264338327950288f
 #define F_DEG_TO_RAD (F_PI / 180.f)

@@ -1,5 +1,6 @@
 #include "Shell.h"
 
+#include "Engine.h"
 #include <winuser.h>
 
 const wchar_t* lpszWindowClassName = L"Window Class Name";
@@ -7,6 +8,8 @@ const wchar_t* lpszWindowName = L"Window Class Name";
 
 HWND hWnd = NULL;
 bool trapCursor;
+
+POINTS prevMousePos;
 
 static void sParseCmdLine()
 {
@@ -36,6 +39,8 @@ static DWORD sGetWindowStyle()
     return WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
 }
 
+#include <string>
+
 static LRESULT CALLBACK sWindowProc(
     _In_ HWND   hwnd,
     _In_ UINT   uMsg,
@@ -50,11 +55,25 @@ static LRESULT CALLBACK sWindowProc(
         {
             if (trapCursor)
             {
+                POINT mousePos;
+                GetCursorPos(&mousePos);
+
                 RECT wRect;
                 GetWindowRect(hWnd, &wRect);
-                uint32 width = wRect.right - wRect.left;
-                uint32 height = wRect.bottom - wRect.top;
-                SetCursorPos(wRect.left + width / 2, wRect.top + height / 2);
+                LONG width = wRect.right - wRect.left;
+                LONG height = wRect.bottom - wRect.top;
+                POINT origin = { (wRect.left + width / 2), wRect.top + height / 2};
+                if (mousePos.x != origin.x || mousePos.y != origin.y)
+                { 
+                    SetCursorPos(origin.x, origin.y);
+                }
+
+                Vector2 input = {
+                    (mousePos.x - origin.x) / float(width) ,
+                    (mousePos.y - origin.y) / float(height) };
+
+                EngineBufferMouseInput(input);
+
             }
         } break;
 

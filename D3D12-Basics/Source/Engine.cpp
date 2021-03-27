@@ -9,6 +9,10 @@
 
 Renderer* gptRenderer;
 
+Vector2 bufferedMouseInput;
+
+Camera camera;
+
 typedef std::chrono::high_resolution_clock HighResClock;
 
 std::chrono::time_point<HighResClock> tStartTime;
@@ -19,6 +23,13 @@ void EngineInitialise()
     gptRenderer = new Renderer();
     tStartTime = HighResClock::now();
     tCurrentFrameTime = tStartTime;
+
+    Vector3 eyePos(0, 0.0f, -10);
+    Vector3 targetPos;
+    Vector3 camUp(0.0f, 1.0f, 0.0f);
+    camUp.Normalize();
+    camera = Camera(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
+    gptRenderer->CameraSet(camera);
 }
 
 void EngineDispose()
@@ -35,19 +46,21 @@ void EngineUpdate()
 {
     tCurrentFrameTime = HighResClock::now();
 
-    float radius = 10.0f;
-    float time = GetCurrentFrameTime();
-    Vector3 eyePos(radius * cosf(time), 0.0f, radius * sinf(time));
-    Vector3 targetPos;
-    Vector3 camUp(0.0f, 1.0f, 0.0f);
-    camUp.Normalize();
-    gptRenderer->CameraSet(Camera(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio()));
+
+    bufferedMouseInput = {0,0};
 }
 
 void EngineIdle()
 {
     EngineUpdate();
     gptRenderer->Render();
+}
+
+
+void EngineBufferMouseInput(
+    const Vector2& input)
+{
+    bufferedMouseInput += input;
 }
 
 float GetCurrentFrameTime()
