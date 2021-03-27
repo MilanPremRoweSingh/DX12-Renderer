@@ -85,12 +85,30 @@ void Renderer::Render()
     Vector3 camUp(0.0f, 1.0f, 0.0f);
     camUp.Normalize();
     Camera cam(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
-    Matrix4x4 matMVP;
-    cam.GetViewProjMatrix(matMVP);
-    Matrix4x4 matMVPTranspose;
-    matMVP.Transpose(matMVPTranspose);
 
-    ConstantDataSetEntry(CBSTATIC_ENTRY(matMVP), &matMVPTranspose);
+    Matrix4x4 matView;
+    cam.GetViewMatrix(matView);
+    matView.Transpose(matView);
+    ConstantDataSetEntry(CBSTATIC_ENTRY(matView), &matView);
+
+    Matrix4x4 matProj;
+    cam.GetProjMatrix(matProj);
+    matProj.Transpose(matProj);
+    ConstantDataSetEntry(CBSTATIC_ENTRY(matProj), &matProj);
+
+    Vector3 directionalLight(1, 1, -1);
+    directionalLight.Normalize();
+    ConstantDataSetEntry(CBSTATIC_ENTRY(directionalLight), &directionalLight);
+
+    float diffuse = 0.5f;
+    ConstantDataSetEntry(CBSTATIC_ENTRY(diffuse), &diffuse);
+
+    float specular = 0.5f;
+    ConstantDataSetEntry(CBSTATIC_ENTRY(specular), &specular);
+
+    float specularHardness = 10.0f;
+    ConstantDataSetEntry(CBSTATIC_ENTRY(specularHardness), &specularHardness);
+
     ConstantDataFlush();
 
     m_core->Draw();

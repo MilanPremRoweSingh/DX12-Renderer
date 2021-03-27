@@ -2,7 +2,12 @@
 
 cbuffer ConstantBuffer : register(b0)
 {
-	float4x4 matMVP;
+	float4x4 matView;
+	float4x4 matProj;
+	float3 directionalLight;
+	float diffuse;
+	float specular;
+	float specularHardness;
 };
 
 SamplerState Sampler;
@@ -18,9 +23,10 @@ struct VS_IN
 
 struct VS_OUT
 {
-	float4 pos : SV_POSITION;
+	float4 hpos : SV_POSITION;
 	float4 col : COLOR0;
 	float3 normal : NORMAL;
+	float4 viewPos : TEXCOORD0;
 };
 
 struct PS_OUT
@@ -32,8 +38,9 @@ VS_OUT VSMain(VS_IN I)
 {
 	VS_OUT O;
 	O.col = I.col;
-	O.pos = mul(matMVP, float4(I.pos + float3(0,0,0), 1.0f));
-	O.normal = mul(matMVP, float4(I.normal, 0.0f)).xyz;
+	O.viewPos = mul(matView, float4(I.pos, 1.0f));
+	O.hpos = mul(matProj, O.viewPos);
+	O.normal = mul(matView, float4(I.normal, 0.0f)).xyz;
 	return O;
 }
 
@@ -41,9 +48,12 @@ PS_OUT PSMain(VS_OUT I)
 {
 	PS_OUT O;
 
+	float3 v = normalize(-I.viewPos.xyz);
 	float3 n = normalize(I.normal);
-	float3 l = normalize(float3(1, 1, 0));
+	float3 l = directionalLight;
 
-	O.col = I.col * Lambertian(n, l);
+	float3 albedoColour = I.col;
+
+	O.col.xyz = albedoColour * diffuse * Lambertian(n, l) + specular * BlinnPhongSpecular(l, v, n, specularHardness);
 	return O;
 }

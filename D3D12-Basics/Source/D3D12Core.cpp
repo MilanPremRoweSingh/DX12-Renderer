@@ -20,7 +20,10 @@
 
 // Local Functions  ////////////////////////////////////////////////////////////////////////
 
-static void sCompileShader(const char* entryPoint, bool fIsVertexShader, ID3DBlob** shaderBlob)
+static void sCompileShader(
+    const char* entryPoint, 
+    bool fIsVertexShader, 
+    ID3DBlob** shaderBlob)
 {
     ComPtr<ID3DBlob> error;
 
@@ -286,7 +289,7 @@ static void sLoadTeapot(D3D12Core& context)
 {
     Assimp::Importer importer;
 
-    const aiScene* teapotScene = importer.ReadFile(TEAPOT_FILE, aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_MakeLeftHanded | aiProcess_FlipWindingOrder );
+    const aiScene* teapotScene = importer.ReadFile(TEAPOT_FILE, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals | aiProcess_MakeLeftHanded | aiProcess_FlipWindingOrder );
     aiMesh* teapot = teapotScene->mMeshes[0];
     assert(teapot);
     assert(teapot->HasFaces());

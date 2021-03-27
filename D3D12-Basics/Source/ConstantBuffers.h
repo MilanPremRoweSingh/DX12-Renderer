@@ -23,7 +23,12 @@ struct ConstantData
 
 struct CBStatic : ConstantData
 {
-    Matrix4x4 matMVP;
+    Matrix4x4 matView;
+    Matrix4x4 matProj;
+    Vector3 directionalLight;
+    float diffuse;
+    float specular;
+    float specularHardness;
 };
 
 extern size_t g_cbSizes[CBCount];
