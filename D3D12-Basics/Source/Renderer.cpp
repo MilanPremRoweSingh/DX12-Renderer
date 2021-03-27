@@ -2,7 +2,6 @@
 
 #include "Engine.h"
 #include "Camera.h"
-#include "Shell.h"
 #include "ConstantBuffers.h"
 #include "D3D12Core.h"
 
@@ -12,6 +11,8 @@ size_t g_cbSizes[CBCount] = {
 
 struct RenderContext
 {    
+    Camera camera;
+
     ConstantData* constantData[CBCount];
     uint32 dirtyCBFlags;
 };
@@ -59,6 +60,12 @@ void Renderer::ConstantDataFlush(
     }
 }
 
+void Renderer::CameraSet(
+    const Camera& camera)
+{
+    m_context->camera = camera;
+}
+
 Renderer::Renderer()
 {
     m_core = new D3D12Core();
@@ -77,22 +84,13 @@ Renderer::~Renderer()
 
 void Renderer::Render()
 {
-    // This is terrible, but fine for now
-    float radius = 10.0f;
-    float time = GetCurrentFrameTime();
-    Vector3 eyePos(radius * cosf(time), 0.0f, radius * sinf(time));
-    Vector3 targetPos;
-    Vector3 camUp(0.0f, 1.0f, 0.0f);
-    camUp.Normalize();
-    Camera cam(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
-
     Matrix4x4 matView;
-    cam.GetViewMatrix(matView);
+    m_context->camera.GetViewMatrix(matView);
     matView.Transpose(matView);
     ConstantDataSetEntry(CBSTATIC_ENTRY(matView), &matView);
 
     Matrix4x4 matProj;
-    cam.GetProjMatrix(matProj);
+    m_context->camera.GetProjMatrix(matProj);
     matProj.Transpose(matProj);
     ConstantDataSetEntry(CBSTATIC_ENTRY(matProj), &matProj);
 

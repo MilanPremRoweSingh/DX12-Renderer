@@ -1,6 +1,7 @@
 #pragma once
 
 class D3D12Core;
+class Camera;
 struct RenderConstants;
 struct RenderConstantEntry;
 struct RenderContext;
@@ -24,6 +25,9 @@ public:
     
     void ConstantDataFlush(
         void);
+
+    void CameraSet(
+        const Camera& camera);
 
 private:
 

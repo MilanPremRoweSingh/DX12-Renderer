@@ -1,6 +1,8 @@
 #include "Engine.h"
 
 #include "Renderer.h"
+#include "Camera.h"
+#include "Shell.h"
 
 #include <windows.h>
 #include <chrono>
@@ -32,6 +34,14 @@ void EngineLog(const char* message)
 void EngineUpdate()
 {
     tCurrentFrameTime = HighResClock::now();
+
+    float radius = 10.0f;
+    float time = GetCurrentFrameTime();
+    Vector3 eyePos(radius * cosf(time), 0.0f, radius * sinf(time));
+    Vector3 targetPos;
+    Vector3 camUp(0.0f, 1.0f, 0.0f);
+    camUp.Normalize();
+    gptRenderer->CameraSet(Camera(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio()));
 }
 
 void EngineIdle()

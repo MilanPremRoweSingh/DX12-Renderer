@@ -6,10 +6,22 @@
 class Camera
 {
 public:
+    Camera() = default;
+
     Camera(
         Vector3& vecEye,
         Vector3& vecTarget,
         Vector3& vecUp,
+        float flNear,
+        float flFar,
+        float flFOVInDeg,
+        float flAspectRatio);
+
+    Camera(
+        float yaw,
+        float pitch,
+        float roll,
+        Vector3& eye,
         float flNear,
         float flFar,
         float flFOVInDeg,
@@ -42,6 +54,20 @@ public:
         const Vector3& vecTarget,
         const Vector3& vecUp,
         Matrix4x4& matLookAtOut);
+    
+    static void sCalcTransformationMatrix(
+        float yaw,
+        float pitch,
+        float roll,
+        Vector3& pos,
+        Matrix4x4& matTransformOut);
+
+    static void sCalcTransformationMatrix(
+        const Vector3& right,
+        const Vector3& up,
+        const Vector3& forward,
+        const Vector3& pos,
+        Matrix4x4& matTransformOut);
 
 private:
     Matrix4x4 m_matView;
