@@ -7,22 +7,22 @@
 #include <windows.h>
 #include <chrono>
 
-Renderer* gptRenderer;
+#define CAMERA_MOVE_SPEED 10.0f
 
-Vector2 bufferedMouseInput;
+Renderer* gptRenderer;
 
 Camera camera;
 
 typedef std::chrono::high_resolution_clock HighResClock;
 
-std::chrono::time_point<HighResClock> tStartTime;
-std::chrono::time_point<HighResClock> tCurrentFrameTime;
+std::chrono::time_point<HighResClock> startTime;
+std::chrono::time_point<HighResClock> currentFrameTime;
 
 void EngineInitialise()
 {   
     gptRenderer = new Renderer();
-    tStartTime = HighResClock::now();
-    tCurrentFrameTime = tStartTime;
+    startTime = HighResClock::now();
+    currentFrameTime = startTime;
 
     Vector3 eyePos(0, 0.0f, -10);
     Vector3 targetPos;
@@ -42,32 +42,38 @@ void EngineLog(const char* message)
     OutputDebugStringA(message);
 }
 
-void EngineUpdate()
+void EngineUpdate(float deltaTime)
 {
-    tCurrentFrameTime = HighResClock::now();
 
-    Vector3 eyePos(0, 0.0f, -10);
+    Vector3 eyePos;
+    camera.GetWorldSpacePosition(eyePos);
+    eyePos;
     Vector3 targetPos;
     Vector3 camUp(0.0f, 1.0f, 0.0f);
-    camera = Camera(bufferedMouseInput.x, -bufferedMouseInput.y, 0.0f, eyePos, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
+    camera = Camera(globals.totalMouseDelta.x, globals.totalMouseDelta.y, 0.0f, eyePos, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
 
+    Vector3 moveDir;
+    globals.cameraMoveDirection.Normalize(moveDir);
+    moveDir *= CAMERA_MOVE_SPEED * deltaTime;
+    camera.Translate(moveDir);
+
+
+    globals.totalMouseDelta = { fmodf(globals.totalMouseDelta.x, 2.0f* F_PI), fmodf(globals.totalMouseDelta.y, 2.0f * F_PI) };
 }
 
 void EngineIdle()
 {
-    EngineUpdate();
+    std::chrono::time_point<HighResClock> old = currentFrameTime;
+    currentFrameTime = HighResClock::now();
+    std::chrono::duration<float> deltaTime = currentFrameTime - old;
+
+    EngineUpdate(deltaTime.count());
     gptRenderer->Render();
 }
 
-
-void EngineBufferMouseInput(
-    const Vector2& input)
+float EngineGetCurrTime()
 {
-    bufferedMouseInput += input;
-}
-
-float GetCurrentFrameTime()
-{
-    std::chrono::duration<float> tInSeconds = tCurrentFrameTime.time_since_epoch() - tStartTime.time_since_epoch();
+    std::chrono::duration<float> tInSeconds = currentFrameTime.time_since_epoch() - startTime.time_since_epoch();
     return tInSeconds.count();
 }
+

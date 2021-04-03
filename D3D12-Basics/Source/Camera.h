@@ -42,6 +42,12 @@ public:
     void GetViewProjMatrix(
         Matrix4x4& matVP) const;
 
+    void GetWorldSpacePosition(
+        Vector3& wsPos) const;
+
+    void Translate(
+        Vector3 vsDelta);
+
     static void sCalcProjMatrix(
         float flNeat, 
         float flFar, 

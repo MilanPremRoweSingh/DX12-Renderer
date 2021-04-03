@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Types.h"
-#include "Globals.h"
 #define NOMINMAX
+
+#include "Types.h"
 
 #include <assert.h>
 #include <windows.h>
@@ -42,3 +42,4 @@ typedef DirectX::SimpleMath::Vector2 Vector2;
 #endif
 
 #include "Utils.h"
+#include "Globals.h"

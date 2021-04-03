@@ -58,6 +58,26 @@ void Camera::GetViewProjMatrix(
     vpMatOut = m_matProj * m_matView;
 }
 
+void Camera::GetWorldSpacePosition(
+    Vector3& wsPos) const
+{
+    Matrix4x4 matViewInverse = m_matView.Invert();
+    wsPos.x = matViewInverse._14;
+    wsPos.y = matViewInverse._24;
+    wsPos.z = matViewInverse._34;
+}
+
+void Camera::Translate(
+    Vector3 vsDelta)
+{
+    Matrix4x4 translate = Matrix4x4::Identity;
+    translate._14 = -vsDelta.x;
+    translate._24 = -vsDelta.y;
+    translate._34 = -vsDelta.z;
+
+    m_matView = translate * m_matView;
+}
+
 void Camera::sCalcProjMatrix(
     float n, 
     float f, 
@@ -104,27 +124,7 @@ void Camera::sCalcTransformationMatrix(
     float gamma = yaw;
     float alpha = pitch;
     float beta = roll;
-
-    /*
-    Vector3 right = {
-        cosf(beta)*cosf(gamma) - sinf(beta)*sinf(alpha)*sinf(gamma),
-        -cosf(alpha)*sinf(beta),
-        cosf(beta)*sinf(gamma) + cosf(gamma)*sinf(beta)*sinf(alpha)
-    };
         
-    Vector3 up = {
-        cosf(gamma)*sinf(beta) + cosf(beta)*sinf(alpha)*sinf(gamma),
-        cosf(alpha)*sinf(beta) + cosf(beta)*sinf(alpha),
-        sinf(beta)*sinf(gamma) - cosf(beta)*cosf(gamma)*sinf(alpha)
-    };
-    
-    Vector3 look = {
-          -cosf(alpha)*sinf(gamma),
-          sinf(alpha),
-          cosf(alpha)*cosf(gamma)
-    };
-    */
-    
     Vector3 right = {
         cosf(beta)*cosf(gamma) - sinf(beta)*sinf(alpha)*sinf(gamma),
         cosf(gamma)*sinf(beta) + cosf(beta)*sinf(alpha)*sinf(gamma),

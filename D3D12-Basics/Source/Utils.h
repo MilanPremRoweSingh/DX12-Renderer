@@ -23,4 +23,10 @@ namespace Utils
     {
         return (1 << bit) & flags;
     }
+
+    template <typename T>
+    inline T Pin(T val, T min, T max)
+    {
+        return val > min ? val < max ? val : max : min;
+    }
 }

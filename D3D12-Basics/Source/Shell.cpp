@@ -2,6 +2,7 @@
 
 #include "Engine.h"
 #include <winuser.h>
+#include <string>
 
 const wchar_t* lpszWindowClassName = L"Window Class Name";
 const wchar_t* lpszWindowName = L"Window Class Name";
@@ -68,12 +69,26 @@ static LRESULT CALLBACK sWindowProc(
 
                 Vector2 input = {
                     (mousePos.x - origin.x) / float(width) ,
-                    (origin.y - mousePos.y) / float(height) };
+                    (mousePos.y - origin.y) / float(height) };
 
-                EngineBufferMouseInput(input);
+                globals.totalMouseDelta += input;
+
+                goto _default;
             }
         } break;
 
+        case WM_KEYDOWN:
+        {
+            if (((1 << 30) & lParam) == 0)
+            {
+                globals.cameraMoveDirection.z += (wParam == 'W' || wParam == 'w');
+                globals.cameraMoveDirection.z -= (wParam == 'S' || wParam == 's');
+                globals.cameraMoveDirection.x += (wParam == 'D' || wParam == 'd');
+                globals.cameraMoveDirection.x -= (wParam == 'A' || wParam == 'a');
+                globals.cameraMoveDirection.x = Utils::Pin(globals.cameraMoveDirection.x, -1.0f, 1.0f);
+                globals.cameraMoveDirection.z = Utils::Pin(globals.cameraMoveDirection.z, -1.0f, 1.0f);
+            }
+        }
 
         case WM_LBUTTONUP:
         case WM_RBUTTONUP:
@@ -88,6 +103,15 @@ static LRESULT CALLBACK sWindowProc(
             {
                 trapCursor = false;
                 ShowCursor(true);
+            } 
+            else
+            {
+                globals.cameraMoveDirection.z -= (wParam == 'W' || wParam == 'w');
+                globals.cameraMoveDirection.z += (wParam == 'S' || wParam == 's');
+                globals.cameraMoveDirection.x -= (wParam == 'D' || wParam == 'd');
+                globals.cameraMoveDirection.x += (wParam == 'A' || wParam == 'a');
+                globals.cameraMoveDirection.x = Utils::Pin(globals.cameraMoveDirection.x, -1.0f, 1.0f);
+                globals.cameraMoveDirection.z = Utils::Pin(globals.cameraMoveDirection.z, -1.0f, 1.0f);
             }
         }
 
