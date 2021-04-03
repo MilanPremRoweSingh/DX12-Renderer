@@ -93,7 +93,7 @@ void Camera::sCalcLookAtMatrix(
     sCalcTransformationMatrix(right, up, look, eye, matLookAtOut);
 }
 
-// RyRpRr
+// RrRpRy
 void Camera::sCalcTransformationMatrix(
     float yaw,
     float pitch,
@@ -101,23 +101,47 @@ void Camera::sCalcTransformationMatrix(
     Vector3& pos,
     Matrix4x4& matTransformOut)
 {
+    float gamma = yaw;
+    float alpha = pitch;
+    float beta = roll;
+
+    /*
     Vector3 right = {
-        cosf(yaw)*cosf(pitch),
-        cosf(yaw)* sinf(pitch)* sinf(roll) - sinf(yaw) * cosf(roll),
-        cosf(yaw)* sinf(pitch)* cosf(roll) + sinf(yaw) * sinf(roll)
-        };
+        cosf(beta)*cosf(gamma) - sinf(beta)*sinf(alpha)*sinf(gamma),
+        -cosf(alpha)*sinf(beta),
+        cosf(beta)*sinf(gamma) + cosf(gamma)*sinf(beta)*sinf(alpha)
+    };
         
     Vector3 up = {
-        sinf(yaw)* cosf(pitch),
-        sinf(yaw)* sinf(pitch)* sinf(roll) + cosf(yaw) * cosf(roll),
-        sinf(yaw)* sinf(pitch)* cosf(roll) - cosf(yaw) * sinf(roll)
+        cosf(gamma)*sinf(beta) + cosf(beta)*sinf(alpha)*sinf(gamma),
+        cosf(alpha)*sinf(beta) + cosf(beta)*sinf(alpha),
+        sinf(beta)*sinf(gamma) - cosf(beta)*cosf(gamma)*sinf(alpha)
     };
     
     Vector3 look = {
-        -sinf(pitch),
-        cosf(pitch)*sinf(roll),
-        cosf(pitch)*cosf(roll)
-        };
+          -cosf(alpha)*sinf(gamma),
+          sinf(alpha),
+          cosf(alpha)*cosf(gamma)
+    };
+    */
+    
+    Vector3 right = {
+        cosf(beta)*cosf(gamma) - sinf(beta)*sinf(alpha)*sinf(gamma),
+        cosf(gamma)*sinf(beta) + cosf(beta)*sinf(alpha)*sinf(gamma),
+        -cosf(alpha)*sinf(gamma),
+    };
+        
+    Vector3 up = {
+        -cosf(alpha)*sinf(beta),
+        cosf(alpha)*cosf(beta),
+        sinf(alpha),
+    };
+    
+    Vector3 look = {
+        cosf(beta)*sinf(gamma) + cosf(gamma)*sinf(beta)*sinf(alpha),
+        sinf(beta)*sinf(gamma) - cosf(beta)*cosf(gamma)*sinf(alpha),
+        cosf(alpha)* cosf(gamma)
+    };
 
     sCalcTransformationMatrix(right, up, look, pos, matTransformOut);
 }

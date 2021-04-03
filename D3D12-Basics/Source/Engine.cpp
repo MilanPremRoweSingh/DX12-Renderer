@@ -46,8 +46,11 @@ void EngineUpdate()
 {
     tCurrentFrameTime = HighResClock::now();
 
+    Vector3 eyePos(0, 0.0f, -10);
+    Vector3 targetPos;
+    Vector3 camUp(0.0f, 1.0f, 0.0f);
+    camera = Camera(bufferedMouseInput.x, -bufferedMouseInput.y, 0.0f, eyePos, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
 
-    bufferedMouseInput = {0,0};
 }
 
 void EngineIdle()

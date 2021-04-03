@@ -55,6 +55,7 @@ public:
         const Vector3& vecUp,
         Matrix4x4& matLookAtOut);
     
+    // v' = Rr * Rp * Ry * v
     static void sCalcTransformationMatrix(
         float yaw,
         float pitch,
