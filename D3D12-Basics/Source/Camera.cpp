@@ -121,29 +121,29 @@ void Camera::sCalcTransformationMatrix(
     Vector3& pos,
     Matrix4x4& matTransformOut)
 {
-    float gamma = yaw;
-    float alpha = pitch;
-    float beta = roll;
-        
-    Vector3 right = {
-        cosf(beta)*cosf(gamma) - sinf(beta)*sinf(alpha)*sinf(gamma),
-        cosf(gamma)*sinf(beta) + cosf(beta)*sinf(alpha)*sinf(gamma),
-        -cosf(alpha)*sinf(gamma),
-    };
-        
-    Vector3 up = {
-        -cosf(alpha)*sinf(beta),
-        cosf(alpha)*cosf(beta),
-        sinf(alpha),
-    };
-    
-    Vector3 look = {
-        cosf(beta)*sinf(gamma) + cosf(gamma)*sinf(beta)*sinf(alpha),
-        sinf(beta)*sinf(gamma) - cosf(beta)*cosf(gamma)*sinf(alpha),
-        cosf(alpha)* cosf(gamma)
-    };
+    Matrix4x4 rotX = {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, cosf(pitch), -sinf(pitch), 0.0f,
+        0.0f, sinf(pitch), cosf(pitch), 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f };
 
-    sCalcTransformationMatrix(right, up, look, pos, matTransformOut);
+    Matrix4x4 rotY = {
+        cosf(yaw), 0.0f, sinf(yaw), 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        -sinf(yaw), 0.0f, cosf(yaw), 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f };
+
+    Matrix4x4 rotZ = {
+        cosf(roll), -sinf(roll), 0.0f, 0.0f,
+        sinf(roll), cosf(roll), 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f };
+
+    matTransformOut = rotX * rotY * rotZ;
+    Vector4 eye = Vector4(pos.x, pos.y, pos.z, 1.0f);
+    matTransformOut._14 = -eye.Dot(*(Vector4*)&matTransformOut._11);
+    matTransformOut._24 = -eye.Dot(*(Vector4*)&matTransformOut._21);
+    matTransformOut._34 = -eye.Dot(*(Vector4*)&matTransformOut._31);
 }
 
 void Camera::sCalcTransformationMatrix(

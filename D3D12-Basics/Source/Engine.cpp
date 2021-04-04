@@ -50,13 +50,12 @@ void EngineUpdate(float deltaTime)
     eyePos;
     Vector3 targetPos;
     Vector3 camUp(0.0f, 1.0f, 0.0f);
-    camera = Camera(globals.totalMouseDelta.x, globals.totalMouseDelta.y, 0.0f, eyePos, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
+    camera = Camera(-globals.totalMouseDelta.x, -globals.totalMouseDelta.y, 0.0f, eyePos, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
 
     Vector3 moveDir;
     globals.cameraMoveDirection.Normalize(moveDir);
     moveDir *= CAMERA_MOVE_SPEED * deltaTime;
     camera.Translate(moveDir);
-
 
     globals.totalMouseDelta = { fmodf(globals.totalMouseDelta.x, 2.0f* F_PI), fmodf(globals.totalMouseDelta.y, 2.0f * F_PI) };
 }
