@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Renderer.h"
+
 void EngineInitialise();
 
 void EngineDispose();
@@ -11,3 +13,5 @@ void EngineUpdate(float deltaTime);
 void EngineIdle();
 
 float EngineGetCurrTime();
+
+extern Renderer* g_pRenderer;

@@ -9,7 +9,7 @@
 
 #define CAMERA_MOVE_SPEED 10.0f
 
-Renderer* gptRenderer;
+Renderer* g_pRenderer;
 
 Camera camera;
 
@@ -20,7 +20,7 @@ std::chrono::time_point<HighResClock> currentFrameTime;
 
 void EngineInitialise()
 {   
-    gptRenderer = new Renderer();
+    g_pRenderer = new Renderer();
     startTime = HighResClock::now();
     currentFrameTime = startTime;
 
@@ -29,12 +29,12 @@ void EngineInitialise()
     Vector3 camUp(0.0f, 1.0f, 0.0f);
     camUp.Normalize();
     camera = Camera(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
-    gptRenderer->CameraSet(&camera);
+    g_pRenderer->CameraSet(&camera);
 }
 
 void EngineDispose()
 {
-    delete gptRenderer;
+    delete g_pRenderer;
 }
 
 void EngineLog(const char* message)
@@ -67,7 +67,7 @@ void EngineIdle()
     std::chrono::duration<float> deltaTime = currentFrameTime - old;
 
     EngineUpdate(deltaTime.count());
-    gptRenderer->Render();
+    g_pRenderer->Render();
 }
 
 float EngineGetCurrTime()

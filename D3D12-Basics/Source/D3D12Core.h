@@ -3,6 +3,7 @@
 #include <dxgi1_6.h>
 #include <vector>
 
+#include "VertexFormats.h"
 #include "ConstantBuffers.h"
 #include "Renderer.h"
 #include "D3D12Header.h"
@@ -45,12 +46,6 @@ struct ConstantBuffer
 };
 
 // Support a single vertex format for now
-struct Vertex
-{
-    float pos[3];
-    float col[4];
-    float normal[4];
-};
 
 // Classes /////////////////////////////////////////////////////////////////////////////////
 

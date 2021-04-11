@@ -6,6 +6,11 @@ struct RenderConstants;
 struct RenderConstantEntry;
 struct RenderContext;
 struct ConstantDataEntry;
+struct Vertex;
+
+
+enum VertexBufferID;
+enum IndexBufferID;
 
 #define NUM_SWAP_CHAIN_BUFFERS 2
 // For now assume all shaders are in the same file
@@ -28,6 +33,12 @@ public:
 
     void CameraSet(
         const Camera* camera);
+
+    VertexBufferID VertexBufferCreate(size_t  numVerts, Vertex* pData) { return (VertexBufferID )-1; }
+    void VertexBufferDestroy(VertexBufferID vbid) {}
+
+    IndexBufferID IndexBufferCreate(size_t  size, uint32* pData) { return (IndexBufferID)-1; }
+    void IndexBufferDestroy(IndexBufferID ibid) {}
 
 private:
 

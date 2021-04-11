@@ -157,6 +157,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Scene.cpp" />
     <ClCompile Include="Source\Device.cpp" />
     <ClCompile Include="Source\Camera.cpp" />
     <ClCompile Include="Source\D3D12Core.cpp" />
@@ -166,11 +167,14 @@
     </ClCompile>
     <ClCompile Include="Source\Globals.cpp" />
     <ClCompile Include="Source\Main.cpp" />
+    <ClCompile Include="Source\Renderable.cpp" />
     <ClCompile Include="Source\Renderer.cpp" />
     <ClCompile Include="Source\Shell.cpp" />
     <ClCompile Include="Source\UploadStream.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\VertexFormats.h" />
+    <ClInclude Include="Source\Scene.h" />
     <ClInclude Include="Source\ConstantBuffers.h" />
     <ClInclude Include="Source\D3D12Header.h" />
     <ClInclude Include="Source\Device.h" />
@@ -179,6 +183,7 @@
     <ClInclude Include="Source\Engine.h" />
     <ClInclude Include="Source\EnginePCH.h" />
     <ClInclude Include="Source\Globals.h" />
+    <ClInclude Include="Source\Renderable.h" />
     <ClInclude Include="Source\Renderer.h" />
     <ClInclude Include="Source\Shell.h" />
     <ClInclude Include="Source\Types.h" />
