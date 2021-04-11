@@ -34,11 +34,19 @@ public:
     void CameraSet(
         const Camera* camera);
 
-    VertexBufferID VertexBufferCreate(size_t  numVerts, Vertex* pData) { return (VertexBufferID )-1; }
-    void VertexBufferDestroy(VertexBufferID vbid) {}
+    VertexBufferID VertexBufferCreate(
+        size_t  numVerts, 
+        Vertex* pData);
 
-    IndexBufferID IndexBufferCreate(size_t  size, uint32* pData) { return (IndexBufferID)-1; }
-    void IndexBufferDestroy(IndexBufferID ibid) {}
+    void VertexBufferDestroy(
+        VertexBufferID vbid);
+
+    IndexBufferID IndexBufferCreate(
+        size_t numIndices, 
+        uint32* pData);
+
+    void IndexBufferDestroy(
+        IndexBufferID ibid);
 
 private:
 

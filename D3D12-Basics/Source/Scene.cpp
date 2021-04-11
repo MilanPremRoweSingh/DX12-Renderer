@@ -112,58 +112,11 @@ Scene* Scene::CreateFromFile(
             continue;
         }
 
-        Renderable* pRenderable = Renderable::CreateRenderable(verts.size(), verts.data(), indices.size(), indices.data());
+        Renderable* pRenderable = Renderable::Create(verts.size(), verts.data(), indices.size(), indices.data());
         ASSERT(pRenderable);
 
         pScene->renderables.push_back(pRenderable);
     }
 
-    return nullptr;
-    /*
-    aiMesh* teapot = teapotScene->mMeshes[0];
-    assert(teapot);
-    assert(teapot->HasFaces());
-    assert(teapot->HasPositions());
-
-    //Create Vertex Buffer
-    Vertex* verts = nullptr;
-    if (teapot->HasVertexColors(0))
-    {
-        verts = (Vertex*)teapot->mVertices;
-    }
-    else
-    {
-        verts = new Vertex[teapot->mNumVertices];
-        for (uint32 i = 0; i < teapot->mNumVertices; i++)
-        {
-            verts[i].col[0] = 1.0f;
-            verts[i].col[1] = 1.0f;
-            verts[i].col[2] = 1.0f;
-            verts[i].col[3] = 1.0f;
-
-            verts[i].pos[0] = teapot->mVertices[i].x;
-            verts[i].pos[1] = teapot->mVertices[i].y;
-            verts[i].pos[2] = teapot->mVertices[i].z;
-
-            verts[i].normal[0] = teapot->mNormals[i].x;
-            verts[i].normal[1] = teapot->mNormals[i].y;
-            verts[i].normal[2] = teapot->mNormals[i].z;
-        }
-
-    }
-    context.VertexBufferCreate(teapot->mNumVertices, verts);
-
-    // Create Index Buffer
-    std::vector<uint32> indices;
-    indices.reserve(3 * teapot->mNumFaces);
-    for (uint32 dwFace = 0; dwFace < teapot->mNumFaces; dwFace++)
-    {
-        const aiFace& face = teapot->mFaces[dwFace];
-        for (uint32 indexIndex = 0; indexIndex < face.mNumIndices; indexIndex++)
-        {
-            indices.push_back(face.mIndices[indexIndex]);
-        }
-    }
-    context.IndexBufferCreate(indices.size(), indices.data());
-    */
+    return pScene;
 }

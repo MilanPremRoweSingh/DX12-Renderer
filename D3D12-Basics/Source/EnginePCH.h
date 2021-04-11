@@ -41,5 +41,5 @@ typedef DirectX::SimpleMath::Vector2 Vector2;
 #define ASSERT(X) 
 #endif
 
-#include "Utils.h"
+#include "Generic/Utils.h"
 #include "Globals.h"

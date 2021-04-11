@@ -3,7 +3,7 @@
 #include "Engine.h"
 #include "D3D12Core.h"
 
-Renderable* Renderable::CreateRenderable(
+Renderable* Renderable::Create(
     size_t numVerts,
     Vertex* pVerts,
     size_t numIndices,
@@ -24,7 +24,7 @@ Renderable* Renderable::CreateRenderable(
     return new Renderable(vbid, ibid);
 }
 
-void Renderable::DestroyRenderable(
+void Renderable::Destroy(
     Renderable* pRenderable)
 {
     ASSERT(pRenderable);

@@ -16,6 +16,22 @@ struct RenderContext
     uint32 dirtyCBFlags;
 };
 
+Renderer::Renderer()
+{
+    m_core = new D3D12Core();
+    m_context = new RenderContext();
+
+    ConstantDataInitialise();
+}
+
+Renderer::~Renderer()
+{
+    ConstantDataDispose();
+
+    delete m_context;
+    delete m_core;
+}
+
 void Renderer::ConstantDataInitialise()
 {
     int32 id = CBStart;
@@ -65,21 +81,29 @@ void Renderer::CameraSet(
     m_context->camera = camera;
 }
 
-Renderer::Renderer()
+VertexBufferID Renderer::VertexBufferCreate(
+    size_t numVerts, 
+    Vertex* pVertexData)
 {
-    m_core = new D3D12Core();
-    m_context = new RenderContext();
-
-    ConstantDataInitialise();
+    return m_core->VertexBufferCreate(numVerts, pVertexData);
 }
 
-Renderer::~Renderer()
+void Renderer::VertexBufferDestroy(
+    VertexBufferID vbid)
 {
-    ConstantDataDispose();
-
-    delete m_context;
-    delete m_core;
+    m_core->VertexBufferDestroy(vbid);
 }
+
+IndexBufferID Renderer::IndexBufferCreate(size_t numIndices, uint32* pIndexData)
+{
+    return m_core->IndexBufferCreate(numIndices, pIndexData);
+}
+
+void Renderer::IndexBufferDestroy(IndexBufferID ibid)
+{
+    m_core->IndexBufferDestroy(ibid);
+}
+
 
 void Renderer::Render()
 {

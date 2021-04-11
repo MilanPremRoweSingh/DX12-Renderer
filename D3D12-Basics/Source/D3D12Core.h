@@ -9,6 +9,8 @@
 #include "D3D12Header.h"
 #include "Device.h"
 #include "UploadStream.h"
+#include "Generic/IDAllocator.h"
+
 
 // Enums ///////////////////////////////////////////////////////////////////////////////////
 
@@ -26,14 +28,14 @@ enum IndexBufferID : int32
 
 struct IndexBuffer
 {
-    ComPtr<ID3D12Resource> buffer;
+    ID3D12Resource* pBuffer;
     D3D12_INDEX_BUFFER_VIEW view;
     size_t indexCount;
 };
 
 struct VertexBuffer
 {
-    ComPtr<ID3D12Resource> buffer;
+    ID3D12Resource* pBuffer;
     D3D12_VERTEX_BUFFER_VIEW view;
     size_t vertexCount;
 };
@@ -44,8 +46,6 @@ struct ConstantBuffer
     D3D12_DESCRIPTOR_ADDRESS view;
     size_t size;
 };
-
-// Support a single vertex format for now
 
 // Classes /////////////////////////////////////////////////////////////////////////////////
 
@@ -82,11 +82,17 @@ public:
 
     VertexBufferID VertexBufferCreate(
         size_t vertexCount,
-        Vertex* vertexData);
+        Vertex* pVertexData);
+
+    void VertexBufferDestroy(
+        VertexBufferID vbid);
 
     IndexBufferID IndexBufferCreate(
         size_t indexCount,
-        uint32* indexData);
+        uint32* pIndexData);
+
+    void IndexBufferDestroy(
+        IndexBufferID ibid);
 
     void ConstantBufferSetData(
         ConstantBufferID id,
@@ -147,8 +153,12 @@ private:
      ComPtr<ID3D12PipelineState> m_pipelineState;
 
      UploadStream* m_uploadStream;
-     std::vector<VertexBuffer> m_vertexBuffers;
-     std::vector<IndexBuffer> m_indexBuffers;
+
+     IDAllocator<VertexBufferID> m_vbidAllocator = IDAllocator<VertexBufferID>(VertexBufferID(0));
+     std::unordered_map<VertexBufferID, VertexBuffer> m_vertexBuffers;
+
+     IDAllocator<IndexBufferID> m_ibidAllocator = IDAllocator<IndexBufferID>(IndexBufferID(0));
+     std::unordered_map<IndexBufferID, IndexBuffer> m_indexBuffers;
 
      uint32 m_frameIndex = 0;
      HANDLE m_fenceEvent;

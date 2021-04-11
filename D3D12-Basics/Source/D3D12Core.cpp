@@ -529,10 +529,9 @@ void D3D12Core::Texture2DCreate(
 
 VertexBufferID D3D12Core::VertexBufferCreate(
     size_t vertexCount,
-    Vertex* vertexData)
+    Vertex* pVertexData)
 {
-    m_vertexBuffers.emplace_back();
-    VertexBuffer& vertexBuffer = m_vertexBuffers.back();
+    VertexBuffer vertexBuffer;
 
     size_t vertsTotalSize = sizeof(Vertex) * vertexCount;
 
@@ -541,22 +540,33 @@ VertexBufferID D3D12Core::VertexBufferCreate(
     heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
     heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-    BufferCreate(heapProps, (uint32)vertsTotalSize, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)vertexData, &vertexBuffer.buffer);
+    BufferCreate(heapProps, (uint32)vertsTotalSize, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)pVertexData, &vertexBuffer.pBuffer);
 
-    vertexBuffer.view.BufferLocation = vertexBuffer.buffer->GetGPUVirtualAddress();
+    vertexBuffer.view.BufferLocation = vertexBuffer.pBuffer->GetGPUVirtualAddress();
     vertexBuffer.view.StrideInBytes = sizeof(Vertex);
     vertexBuffer.view.SizeInBytes = (uint32)vertsTotalSize;
 
     vertexBuffer.vertexCount = vertexCount;
-    return (VertexBufferID)(m_vertexBuffers.size() - 1);
+
+    VertexBufferID id = m_vbidAllocator.AllocID();
+    m_vertexBuffers[id] = vertexBuffer;
+    return id;
+}
+
+void D3D12Core::VertexBufferDestroy(
+    VertexBufferID vbid)
+{
+    VertexBuffer& vertexBuffer = m_vertexBuffers[vbid];
+    vertexBuffer.pBuffer->Release();
+    m_vertexBuffers.erase(vbid);
+    m_vbidAllocator.FreeID(vbid);
 }
 
 IndexBufferID D3D12Core::IndexBufferCreate(
     size_t indexCount,
-    uint32* indexData)
+    uint32* pIndexData)
 {
-    m_indexBuffers.emplace_back();
-    IndexBuffer& indexBuffer = m_indexBuffers.back();
+    IndexBuffer indexBuffer;
 
     size_t indexTotalSize = sizeof(uint32) * indexCount;
 
@@ -565,14 +575,27 @@ IndexBufferID D3D12Core::IndexBufferCreate(
     heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
     heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-    BufferCreate(heapProps, (uint32)indexTotalSize, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)indexData, &indexBuffer.buffer);
+    BufferCreate(heapProps, (uint32)indexTotalSize, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, (void*)pIndexData, &indexBuffer.pBuffer);
 
-    indexBuffer.view.BufferLocation = indexBuffer.buffer->GetGPUVirtualAddress();
+    indexBuffer.view.BufferLocation = indexBuffer.pBuffer->GetGPUVirtualAddress();
     indexBuffer.view.SizeInBytes = sizeof(uint32) * (uint32)indexCount;
     indexBuffer.view.Format = DXGI_FORMAT_R32_UINT;
 
     indexBuffer.indexCount = indexCount;
-    return (IndexBufferID)(m_indexBuffers.size() - 1);
+
+
+    IndexBufferID id = m_ibidAllocator.AllocID();
+    m_indexBuffers[id] = indexBuffer;
+    return id;
+}
+
+void D3D12Core::IndexBufferDestroy(
+    IndexBufferID ibid)
+{
+    IndexBuffer& indexBuffer = m_indexBuffers[ibid];
+    indexBuffer.pBuffer->Release();
+    m_indexBuffers.erase(ibid);
+    m_ibidAllocator.FreeID(ibid);
 }
 
 D3D12_DESCRIPTOR_ADDRESS D3D12Core::AllocateGeneralDescriptor(
@@ -652,9 +675,9 @@ void D3D12Core::Draw()
     m_cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     m_cmdList->ClearDepthStencilView(dsvHadle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
     m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBuffers[0].view);
-    m_cmdList->IASetIndexBuffer(&m_indexBuffers[0].view);
-    m_cmdList->DrawIndexedInstanced((uint32)m_indexBuffers[0].indexCount, 1, 0, 0, 0);
+    m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBuffers[(VertexBufferID)0].view);
+    m_cmdList->IASetIndexBuffer(&m_indexBuffers[(IndexBufferID)0].view);
+    m_cmdList->DrawIndexedInstanced((uint32)m_indexBuffers[(IndexBufferID)0].indexCount, 1, 0, 0, 0);
 
     // Transition back buffer to present
     {

@@ -173,6 +173,8 @@
     <ClCompile Include="Source\UploadStream.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\Generic\SimpleDequeue.h" />
+    <ClInclude Include="Source\Generic\IDAllocator.h" />
     <ClInclude Include="Source\VertexFormats.h" />
     <ClInclude Include="Source\Scene.h" />
     <ClInclude Include="Source\ConstantBuffers.h" />
@@ -188,7 +190,7 @@
     <ClInclude Include="Source\Shell.h" />
     <ClInclude Include="Source\Types.h" />
     <ClInclude Include="Source\UploadStream.h" />
-    <ClInclude Include="Source\Utils.h" />
+    <ClInclude Include="Source\Generic\Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

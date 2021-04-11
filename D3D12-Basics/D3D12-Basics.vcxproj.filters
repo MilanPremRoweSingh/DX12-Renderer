@@ -80,9 +80,6 @@
     <ClInclude Include="Source\D3D12Header.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Utils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Source\ConstantBuffers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -96,6 +93,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\VertexFormats.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Generic\Utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Generic\IDAllocator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Generic\SimpleDequeue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

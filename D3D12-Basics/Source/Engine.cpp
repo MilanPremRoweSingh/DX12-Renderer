@@ -19,7 +19,7 @@ std::chrono::time_point<HighResClock> startTime;
 std::chrono::time_point<HighResClock> currentFrameTime;
 
 void EngineInitialise()
-{   
+{
     g_pRenderer = new Renderer();
     startTime = HighResClock::now();
     currentFrameTime = startTime;
