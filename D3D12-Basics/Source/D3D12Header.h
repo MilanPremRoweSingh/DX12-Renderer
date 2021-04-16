@@ -4,7 +4,7 @@
 #include <wrl/client.h>
 using Microsoft::WRL::ComPtr;
 
-#define ASSERT_SUCCEEDED(x) {HRESULT result = x; assert(SUCCEEDED(result));} 
+#define ASSERT_SUCCEEDED(x) {HRESULT result = x; ASSERT(SUCCEEDED(result));} 
 
 struct D3D12_DESCRIPTOR_ADDRESS
 {

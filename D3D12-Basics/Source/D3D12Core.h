@@ -102,6 +102,9 @@ public:
     void CommandListExecute(
         void);
 
+    void CommandListBegin(
+        void);
+
     void WaitForGPU(
         void);
 

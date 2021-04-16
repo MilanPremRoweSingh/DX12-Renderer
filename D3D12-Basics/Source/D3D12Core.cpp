@@ -431,10 +431,6 @@ void D3D12Core::InitialAssetsLoad()
 
         m_device->CreateShaderResourceView(m_texture.Get(), NULL, AllocateGeneralDescriptor().cpuHandle);
     }
-
-    // For buffer upload
-    CommandListExecute();
-    WaitForGPU();
 }
 
 void D3D12Core::BufferCreate(
@@ -445,6 +441,8 @@ void D3D12Core::BufferCreate(
     void* initialData,
     ID3D12Resource** ppBuffer)
 {
+    CommandListBegin();
+
     m_device->CreateBuffer(heapProps, size, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, ppBuffer);
 
     UploadStream::Allocation uploadBufferAlloc = m_uploadStream->Allocate(size);
@@ -465,6 +463,8 @@ void D3D12Core::BufferCreate(
 
         m_cmdList->ResourceBarrier(1, &barrier);
     }
+
+    CommandListExecute();
 }
 
 void D3D12Core::Texture2DCreate(
@@ -478,6 +478,8 @@ void D3D12Core::Texture2DCreate(
     void* initialData,
     ID3D12Resource** ppTexture)
 {
+    CommandListBegin();
+
     m_device->CreateTexture2D(heapProps, width, height, mipLevels, format, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, nullptr, ppTexture);
 
     uint32 rowPitch = width * GetDXGIFormatSize(format);
@@ -525,6 +527,8 @@ void D3D12Core::Texture2DCreate(
 
         m_cmdList->ResourceBarrier(1, &barrier);
     }
+
+    CommandListExecute();
 }
 
 VertexBufferID D3D12Core::VertexBufferCreate(
@@ -615,6 +619,14 @@ void D3D12Core::CommandListExecute()
     m_cmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 }
 
+void D3D12Core::CommandListBegin()
+{
+    // BAaaaaAAaad
+    WaitForGPU();
+    ASSERT_SUCCEEDED(m_cmdAllocator->Reset());
+    ASSERT_SUCCEEDED(m_cmdList->Reset(m_cmdAllocator.Get(), m_pipelineState.Get()));
+}
+
 void D3D12Core::WaitForGPU()
 {
     const UINT64 fence = ++m_fenceValue;
@@ -629,8 +641,7 @@ void D3D12Core::WaitForGPU()
 
 void D3D12Core::Draw()
 {
-    ASSERT_SUCCEEDED(m_cmdAllocator->Reset());
-    ASSERT_SUCCEEDED(m_cmdList->Reset(m_cmdAllocator.Get(), m_pipelineState.Get()));
+    CommandListBegin();
 
     m_cmdList->SetGraphicsRootSignature(m_defaultRootSignature.Get());
 

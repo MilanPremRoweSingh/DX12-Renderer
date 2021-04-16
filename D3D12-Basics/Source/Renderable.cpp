@@ -28,9 +28,9 @@ void Renderable::Destroy(
     Renderable* pRenderable)
 {
     ASSERT(pRenderable);
-    ASSERT(pRenderable->m_vbid != VertexBufferIDInvalid);
-    ASSERT(pRenderable->m_ibid != IndexBufferIDInvalid);
+    ASSERT(pRenderable->vbid != VertexBufferIDInvalid);
+    ASSERT(pRenderable->ibid != IndexBufferIDInvalid);
 
-    g_pRenderer->VertexBufferDestroy(pRenderable->m_vbid);
-    g_pRenderer->IndexBufferDestroy(pRenderable->m_ibid);
+    g_pRenderer->VertexBufferDestroy(pRenderable->vbid);
+    g_pRenderer->IndexBufferDestroy(pRenderable->ibid);
 }

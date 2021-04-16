@@ -1,5 +1,6 @@
 #include "Scene.h"
 
+#include "Engine.h"
 #include "VertexFormats.h"
 #include "Renderable.h"
 
@@ -26,8 +27,8 @@ Scene::~Scene()
     }
 }
 
-Scene* Scene::CreateFromFile(
-    char* fileName)
+Scene* Scene::Load(
+    const char* fileName)
 {
     Assimp::Importer importer;
 
@@ -112,11 +113,23 @@ Scene* Scene::CreateFromFile(
             continue;
         }
 
-        Renderable* pRenderable = Renderable::Create(verts.size(), verts.data(), indices.size(), indices.data());
+        VertexBufferID vbid = g_pRenderer->VertexBufferCreate(verts.size(), verts.data());
+        IndexBufferID ibid = g_pRenderer->IndexBufferCreate(indices.size(), indices.data());
+        Renderable* pRenderable = new Renderable(vbid, ibid);
         ASSERT(pRenderable);
 
         pScene->renderables.push_back(pRenderable);
     }
 
     return pScene;
+}
+
+void Scene::Unload(
+    Scene* pScene)
+{
+    for (auto it = pScene->renderables.begin(); it != pScene->renderables.end(); it++)
+    {
+        Renderable* pRenderable = *it;
+        Renderable::Destroy(pRenderable);
+    }
 }

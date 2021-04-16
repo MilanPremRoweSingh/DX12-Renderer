@@ -2,6 +2,7 @@
 
 #include "Renderer.h"
 #include "Camera.h"
+#include "Scene.h"
 #include "Shell.h"
 
 #include <windows.h>
@@ -10,8 +11,9 @@
 #define CAMERA_MOVE_SPEED 10.0f
 
 Renderer* g_pRenderer;
-
+Scene* g_pCurrScene;
 Camera camera;
+
 
 typedef std::chrono::high_resolution_clock HighResClock;
 
@@ -23,6 +25,8 @@ void EngineInitialise()
     g_pRenderer = new Renderer();
     startTime = HighResClock::now();
     currentFrameTime = startTime;
+
+    g_pCurrScene = Scene::Load("../Data/Models/teapot.obj");
 
     Vector3 eyePos(0, 0.0f, -10);
     Vector3 targetPos;

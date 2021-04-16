@@ -25,6 +25,7 @@ void Device::CreateGraphicsCommandList(
     ID3D12GraphicsCommandList** ppCmdList)
 {
     ASSERT_SUCCEEDED(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, cmdAllocator, pipelineState, IID_PPV_ARGS(ppCmdList)));
+    ASSERT_SUCCEEDED((*ppCmdList)->Close());
 }
 
 void Device::CreateCommandAllocator(

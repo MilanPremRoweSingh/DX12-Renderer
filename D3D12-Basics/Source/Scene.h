@@ -6,8 +6,11 @@ class Renderable;
 class Scene
 {
 public:
-    static Scene* CreateFromFile(
-        char* fileName);
+    static Scene* Load(
+        const char* fileName);
+
+    static void Unload(
+        Scene* pScene);
 
 private:
     Scene();

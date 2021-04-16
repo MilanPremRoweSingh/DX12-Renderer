@@ -104,7 +104,6 @@ void Renderer::IndexBufferDestroy(IndexBufferID ibid)
     m_core->IndexBufferDestroy(ibid);
 }
 
-
 void Renderer::Render()
 {
     if (!m_context->camera)

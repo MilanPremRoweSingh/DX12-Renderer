@@ -8,6 +8,10 @@ struct Vertex;
 class Renderable
 {
 public:
+    Renderable(VertexBufferID _vbid, IndexBufferID _ibid) :
+        vbid(_vbid),
+        ibid(_ibid) {};
+
     static Renderable* Create(
         size_t numVerts,
         Vertex* pVerts,
@@ -16,12 +20,8 @@ public:
 
     static void Destroy(
         Renderable* renderable);
-    
-private:
-    Renderable(VertexBufferID vbid, IndexBufferID ibid) : 
-        m_vbid(vbid),
-        m_ibid(ibid) {};
 
-    VertexBufferID m_vbid;
-    IndexBufferID m_ibid;
+private:
+    VertexBufferID vbid;
+    IndexBufferID ibid;
 };
