@@ -21,7 +21,7 @@ public:
     static void Destroy(
         Renderable* renderable);
 
-private:
     VertexBufferID vbid;
     IndexBufferID ibid;
+private:
 };

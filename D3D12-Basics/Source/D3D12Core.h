@@ -109,7 +109,8 @@ public:
         void);
 
     void Draw(
-        void);
+        VertexBufferID vbid,
+        IndexBufferID ibid);
 
     void Present(
         void);

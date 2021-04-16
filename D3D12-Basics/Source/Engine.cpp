@@ -11,7 +11,7 @@
 #define CAMERA_MOVE_SPEED 10.0f
 
 Renderer* g_pRenderer;
-Scene* g_pCurrScene;
+Scene* s_pCurrScene;
 Camera camera;
 
 
@@ -26,7 +26,7 @@ void EngineInitialise()
     startTime = HighResClock::now();
     currentFrameTime = startTime;
 
-    g_pCurrScene = Scene::Load("../Data/Models/teapot.obj");
+    s_pCurrScene = Scene::Load("../Data/Models/teapot.obj");
 
     Vector3 eyePos(0, 0.0f, -10);
     Vector3 targetPos;
@@ -34,6 +34,7 @@ void EngineInitialise()
     camUp.Normalize();
     camera = Camera(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
     g_pRenderer->CameraSet(&camera);
+    g_pRenderer->SceneSet(s_pCurrScene);
 }
 
 void EngineDispose()

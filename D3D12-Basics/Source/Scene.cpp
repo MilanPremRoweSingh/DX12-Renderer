@@ -21,7 +21,7 @@ Scene::Scene()
 
 Scene::~Scene()
 {
-    for (auto it = renderables.begin(); it != renderables.end(); it++)
+    for (auto it = pRenderables.begin(); it != pRenderables.end(); it++)
     {
         delete *it;
     }
@@ -41,7 +41,7 @@ Scene* Scene::Load(
 
     Scene* pScene = new Scene();
 
-    pScene->renderables.reserve(assimpScene->mNumMeshes);
+    pScene->pRenderables.reserve(assimpScene->mNumMeshes);
 
     for (uint32 idxMesh = 0; idxMesh < assimpScene->mNumMeshes; idxMesh++)
     {
@@ -103,9 +103,9 @@ Scene* Scene::Load(
                 continue;
             }
 
-            indices.push_back(assimpMesh.mFaces[idxMesh].mIndices[0]);
-            indices.push_back(assimpMesh.mFaces[idxMesh].mIndices[1]);
-            indices.push_back(assimpMesh.mFaces[idxMesh].mIndices[2]);
+            indices.push_back(assimpMesh.mFaces[idxFace].mIndices[0]);
+            indices.push_back(assimpMesh.mFaces[idxFace].mIndices[1]);
+            indices.push_back(assimpMesh.mFaces[idxFace].mIndices[2]);
         }
 
         if (!allFacesValid || !verts.size() || !indices.size() || (indices.size() % 3) != 0 )
@@ -118,7 +118,7 @@ Scene* Scene::Load(
         Renderable* pRenderable = new Renderable(vbid, ibid);
         ASSERT(pRenderable);
 
-        pScene->renderables.push_back(pRenderable);
+        pScene->pRenderables.push_back(pRenderable);
     }
 
     return pScene;
@@ -127,7 +127,7 @@ Scene* Scene::Load(
 void Scene::Unload(
     Scene* pScene)
 {
-    for (auto it = pScene->renderables.begin(); it != pScene->renderables.end(); it++)
+    for (auto it = pScene->pRenderables.begin(); it != pScene->pRenderables.end(); it++)
     {
         Renderable* pRenderable = *it;
         Renderable::Destroy(pRenderable);

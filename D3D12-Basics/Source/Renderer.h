@@ -2,11 +2,13 @@
 
 class D3D12Core;
 class Camera;
+class Scene;
 struct RenderConstants;
 struct RenderConstantEntry;
 struct RenderContext;
 struct ConstantDataEntry;
 struct Vertex;
+
 
 
 enum VertexBufferID;
@@ -32,7 +34,10 @@ public:
         void);
 
     void CameraSet(
-        const Camera* camera);
+        const Camera* pCamera);
+
+    void SceneSet(
+        const Scene* pScene);
 
     VertexBufferID VertexBufferCreate(
         size_t  numVerts, 

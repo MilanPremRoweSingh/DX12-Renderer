@@ -14,7 +14,6 @@
 
 // Defines /////////////////////////////////////////////////////////////////////////////////
 
-#define TEAPOT_FILE "../Data/Models/teapot.obj"
 #define USE_HARDCODED_SCENE 0
 #define D3D_COMPILE_STANDARD_FILE_INCLUDE ((ID3DInclude*)(UINT_PTR)1)
 
@@ -285,58 +284,6 @@ void D3D12Core::ConstantBufferSetData(
     m_constantBuffers[id]->Unmap(0, &range);
 }
 
-static void sLoadTeapot(D3D12Core& context)
-{
-    Assimp::Importer importer;
-
-    const aiScene* teapotScene = importer.ReadFile(TEAPOT_FILE, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals | aiProcess_MakeLeftHanded | aiProcess_FlipWindingOrder );
-    aiMesh* teapot = teapotScene->mMeshes[0];
-    assert(teapot);
-    assert(teapot->HasFaces());
-    assert(teapot->HasPositions());
-
-    //Create Vertex Buffer
-    Vertex* verts = nullptr;
-    if (teapot->HasVertexColors(0))
-    {
-        verts = (Vertex*)teapot->mVertices;
-    }
-    else
-    {
-        verts = new Vertex[teapot->mNumVertices];
-        for (uint32 i = 0; i < teapot->mNumVertices; i++)
-        {
-            verts[i].col[0] = 1.0f;
-            verts[i].col[1] = 1.0f;
-            verts[i].col[2] = 1.0f;
-            verts[i].col[3] = 1.0f;
-
-            verts[i].pos[0] = teapot->mVertices[i].x;
-            verts[i].pos[1] = teapot->mVertices[i].y;
-            verts[i].pos[2] = teapot->mVertices[i].z;
-
-            verts[i].normal[0] = teapot->mNormals[i].x;
-            verts[i].normal[1] = teapot->mNormals[i].y;
-            verts[i].normal[2] = teapot->mNormals[i].z;
-        }
-
-    }
-    context.VertexBufferCreate(teapot->mNumVertices, verts);
-
-    // Create Index Buffer
-    std::vector<uint32> indices;
-    indices.reserve(3 * teapot->mNumFaces);
-    for (uint32 dwFace = 0; dwFace < teapot->mNumFaces; dwFace++)
-    {
-        const aiFace& face = teapot->mFaces[dwFace];
-        for (uint32 indexIndex = 0; indexIndex < face.mNumIndices; indexIndex++)
-        {
-            indices.push_back(face.mIndices[indexIndex]);
-        }
-    }
-    context.IndexBufferCreate(indices.size(), indices.data());
-}
-
 static void sLoadCube(D3D12Core& context)
 {
     // With Normals now, we need to dupe verts for it work properly if we want proper shading
@@ -417,8 +364,6 @@ void D3D12Core::InitialAssetsLoad()
     {
         m_device->CreateGraphicsCommandList(m_cmdAllocator.Get(), m_pipelineState.Get(), &m_cmdList);
     }
-
-    sLoadTeapot(*this);
 
     // Create dumb texture
     {
@@ -639,7 +584,9 @@ void D3D12Core::WaitForGPU()
     }
 }
 
-void D3D12Core::Draw()
+void D3D12Core::Draw(
+    VertexBufferID vbid,
+    IndexBufferID ibid)
 {
     CommandListBegin();
 
@@ -686,9 +633,9 @@ void D3D12Core::Draw()
     m_cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     m_cmdList->ClearDepthStencilView(dsvHadle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
     m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBuffers[(VertexBufferID)0].view);
-    m_cmdList->IASetIndexBuffer(&m_indexBuffers[(IndexBufferID)0].view);
-    m_cmdList->DrawIndexedInstanced((uint32)m_indexBuffers[(IndexBufferID)0].indexCount, 1, 0, 0, 0);
+    m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBuffers[vbid].view);
+    m_cmdList->IASetIndexBuffer(&m_indexBuffers[ibid].view);
+    m_cmdList->DrawIndexedInstanced((uint32)m_indexBuffers[ibid].indexCount, 1, 0, 0, 0);
 
     // Transition back buffer to present
     {

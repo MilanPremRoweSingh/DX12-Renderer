@@ -3,6 +3,8 @@
 #include "Camera.h"
 #include "ConstantBuffers.h"
 #include "D3D12Core.h"
+#include "Renderable.h"
+#include "Scene.h"
 
 size_t g_cbSizes[CBCount] = {
    sizeof(CBStatic),
@@ -10,9 +12,10 @@ size_t g_cbSizes[CBCount] = {
 
 struct RenderContext
 {    
-    const Camera* camera;
+    const Camera* pCamera;
+    const Scene* pScene;
 
-    ConstantData* constantData[CBCount];
+    ConstantData* pConstantData[CBCount];
     uint32 dirtyCBFlags;
 };
 
@@ -35,7 +38,7 @@ Renderer::~Renderer()
 void Renderer::ConstantDataInitialise()
 {
     int32 id = CBStart;
-    m_context->constantData[id++] = new CBStatic();
+    m_context->pConstantData[id++] = new CBStatic();
 
     ASSERT(id == CBCount);
 
@@ -46,7 +49,7 @@ void Renderer::ConstantDataDispose()
 {
     for (int32 id = CBStart; id < CBCount; id++)
     {
-        delete m_context->constantData[id];
+        delete m_context->pConstantData[id];
     }
 }
 
@@ -55,7 +58,7 @@ void Renderer::ConstantDataSetEntry(
     void* data)
 {
     Utils::SetBit32(entry.id, m_context->dirtyCBFlags);
-    memcpy(m_context->constantData[entry.id] + entry.offset, data, entry.size);
+    memcpy(m_context->pConstantData[entry.id] + entry.offset, data, entry.size);
 }
 
 void Renderer::ConstantDataFlush(
@@ -70,15 +73,21 @@ void Renderer::ConstantDataFlush(
     {
         if (Utils::TestBit32(id, m_context->dirtyCBFlags))
         {
-            m_core->ConstantBufferSetData((ConstantBufferID)id, g_cbSizes[id], m_context->constantData[id]);
+            m_core->ConstantBufferSetData((ConstantBufferID)id, g_cbSizes[id], m_context->pConstantData[id]);
         }
     }
 }
 
 void Renderer::CameraSet(
-    const Camera* camera)
+    const Camera* pCamera)
 {
-    m_context->camera = camera;
+    m_context->pCamera = pCamera;
+}
+
+void Renderer::SceneSet(
+    const Scene* pScene)
+{
+    m_context->pScene = pScene;
 }
 
 VertexBufferID Renderer::VertexBufferCreate(
@@ -106,18 +115,18 @@ void Renderer::IndexBufferDestroy(IndexBufferID ibid)
 
 void Renderer::Render()
 {
-    if (!m_context->camera)
+    if (!m_context->pCamera)
     {
         return;
     }
 
     Matrix4x4 matView;
-    m_context->camera->GetViewMatrix(matView);
+    m_context->pCamera->GetViewMatrix(matView);
     matView.Transpose(matView);
     ConstantDataSetEntry(CBSTATIC_ENTRY(matView), &matView);
 
     Matrix4x4 matProj;
-    m_context->camera->GetProjMatrix(matProj);
+    m_context->pCamera->GetProjMatrix(matProj);
     matProj.Transpose(matProj);
     ConstantDataSetEntry(CBSTATIC_ENTRY(matProj), &matProj);
 
@@ -136,6 +145,10 @@ void Renderer::Render()
 
     ConstantDataFlush();
 
-    m_core->Draw();
+    for (int32 i = 0; i < m_context->pScene->pRenderables.size(); i++)
+    {
+        const Renderable* pRenderable = m_context->pScene->pRenderables[i];
+        m_core->Draw(pRenderable->vbid, pRenderable->ibid);
+    }
     m_core->Present();
 }

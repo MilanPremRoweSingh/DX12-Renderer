@@ -12,10 +12,11 @@ public:
     static void Unload(
         Scene* pScene);
 
+
+    std::vector<Renderable*> pRenderables;
 private:
     Scene();
     ~Scene();
     
-    std::vector<Renderable*> renderables;
 };
 
