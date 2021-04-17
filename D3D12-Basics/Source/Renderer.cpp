@@ -145,10 +145,18 @@ void Renderer::Render()
 
     ConstantDataFlush();
 
-    for (int32 i = 0; i < m_context->pScene->pRenderables.size(); i++)
+    m_core->Begin();
+
+    if (m_context->pScene)
     {
-        const Renderable* pRenderable = m_context->pScene->pRenderables[i];
-        m_core->Draw(pRenderable->vbid, pRenderable->ibid);
+        for (int32 i = 0; i < m_context->pScene->pRenderables.size(); i++)
+        {
+            const Renderable* pRenderable = m_context->pScene->pRenderables[i];
+            m_core->Draw(pRenderable->vbid, pRenderable->ibid);
+        }
     }
+
+    m_core->End();
+
     m_core->Present();
 }

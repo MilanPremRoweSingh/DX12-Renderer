@@ -584,9 +584,8 @@ void D3D12Core::WaitForGPU()
     }
 }
 
-void D3D12Core::Draw(
-    VertexBufferID vbid,
-    IndexBufferID ibid)
+void D3D12Core::Begin(
+    void)
 {
     CommandListBegin();
 
@@ -628,16 +627,24 @@ void D3D12Core::Draw(
 
     m_cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHadle);
 
-    // Draw
     const float clearColor[] = { 86.0f / 255.0f, 0.0f / 255.0f, 94.0f / 255.0f, 1.0f };
     m_cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     m_cmdList->ClearDepthStencilView(dsvHadle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
     m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void D3D12Core::Draw(
+    VertexBufferID vbid,
+    IndexBufferID ibid)
+{
+    // Draw
     m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBuffers[vbid].view);
     m_cmdList->IASetIndexBuffer(&m_indexBuffers[ibid].view);
     m_cmdList->DrawIndexedInstanced((uint32)m_indexBuffers[ibid].indexCount, 1, 0, 0, 0);
+}
 
-    // Transition back buffer to present
+void D3D12Core::End()
+{
     {
         D3D12_RESOURCE_TRANSITION_BARRIER transition;
         transition.pResource = m_renderTargets[m_frameIndex].Get();
@@ -652,7 +659,7 @@ void D3D12Core::Draw(
 
         m_cmdList->ResourceBarrier(1, &barrier);
     }
-    
+
     CommandListExecute();
 }
 

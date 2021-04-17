@@ -108,9 +108,15 @@ public:
     void WaitForGPU(
         void);
 
+    void Begin(
+        void);
+
     void Draw(
         VertexBufferID vbid,
         IndexBufferID ibid);
+
+    void End(
+        void);
 
     void Present(
         void);

@@ -128,9 +128,9 @@ void Device::CreateBuffer(
     ));
 
 #ifdef _DEBUG
-    std::wstringstream ws;
-    ws << "Buffer " << m_debugResourceIndex++;
-    (*ppBuffer)->SetName(ws.str().c_str());
+    //std::wstringstream ws;
+    //ws << "Buffer " << m_debugResourceIndex++;
+    //(*ppBuffer)->SetName(ws.str().c_str());
 #endif
 }
 
@@ -170,9 +170,9 @@ void Device::CreateTexture2D(
     ));
 
 #ifdef _DEBUG
-    std::wstringstream ws;
-    ws << "Texture " << m_debugResourceIndex++;
-    (*ppTexture)->SetName(ws.str().c_str());
+    //std::wstringstream ws;
+    //ws << "Texture " << m_debugResourceIndex++;
+    //(*ppTexture)->SetName(ws.str().c_str());
 #endif
 }
 
