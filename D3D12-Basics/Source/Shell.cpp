@@ -8,7 +8,7 @@ const wchar_t* lpszWindowClassName = L"Window Class Name";
 const wchar_t* lpszWindowName = L"Window Class Name";
 
 HWND hWnd = NULL;
-bool trapCursor;
+bool s_trapCursor;
 
 POINTS prevMousePos;
 
@@ -40,6 +40,15 @@ static DWORD sGetWindowStyle()
     return WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
 }
 
+static void sTrapCursor()
+{
+    if (!s_trapCursor)
+    {
+        s_trapCursor = true;
+        ShowCursor(false);
+    }
+}
+
 static LRESULT CALLBACK sWindowProc(
     _In_ HWND   hwnd,
     _In_ UINT   uMsg,
@@ -52,7 +61,7 @@ static LRESULT CALLBACK sWindowProc(
     {
         case WM_MOUSEMOVE:
         {
-            if (trapCursor)
+            if (s_trapCursor)
             {
                 POINT mousePos;
                 GetCursorPos(&mousePos);
@@ -93,15 +102,14 @@ static LRESULT CALLBACK sWindowProc(
         case WM_LBUTTONUP:
         case WM_RBUTTONUP:
         {
-            trapCursor = true;
-            ShowCursor(false);
+            sTrapCursor();
         } break;
 
         case WM_KEYUP:
         {
             if (wParam == VK_ESCAPE)
             {
-                trapCursor = false;
+                s_trapCursor = false;
                 ShowCursor(true);
             } 
             else
@@ -151,8 +159,6 @@ static void sCreateWindow(
     if (hWnd)
     {
         ShowWindow(hWnd, SW_SHOW);
-        trapCursor = true;
-        ShowCursor(false);
     }
     DeleteObject(wc.hbrBackground);
 }
