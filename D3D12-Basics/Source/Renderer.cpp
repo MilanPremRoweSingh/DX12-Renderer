@@ -159,4 +159,10 @@ void Renderer::Render()
     m_core->End();
 
     m_core->Present();
+
+}
+
+void Renderer::FlushGPU()
+{
+    m_core->WaitForGPU();
 }

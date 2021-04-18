@@ -12,14 +12,13 @@ public:
         vbid(_vbid),
         ibid(_ibid) {};
 
+    ~Renderable();
+
     static Renderable* Create(
         size_t numVerts,
         Vertex* pVerts,
         size_t numIndices,
         uint32* pIndices);
-
-    static void Destroy(
-        Renderable* renderable);
 
     VertexBufferID vbid;
     IndexBufferID ibid;

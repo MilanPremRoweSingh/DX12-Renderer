@@ -9,14 +9,11 @@ public:
     static Scene* Load(
         const char* fileName);
 
-    static void Unload(
-        Scene* pScene);
-
+    ~Scene();
 
     std::vector<Renderable*> pRenderables;
 private:
     Scene();
-    ~Scene();
     
 };
 

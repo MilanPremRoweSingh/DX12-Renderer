@@ -26,6 +26,8 @@ public:
 
     void Render();
 
+    void FlushGPU();
+
     void ConstantDataSetEntry(
         const ConstantDataEntry& entry,
         void* data);

@@ -24,13 +24,11 @@ Renderable* Renderable::Create(
     return new Renderable(vbid, ibid);
 }
 
-void Renderable::Destroy(
-    Renderable* pRenderable)
+Renderable::~Renderable()
 {
-    ASSERT(pRenderable);
-    ASSERT(pRenderable->vbid != VertexBufferIDInvalid);
-    ASSERT(pRenderable->ibid != IndexBufferIDInvalid);
+    ASSERT(vbid != VertexBufferIDInvalid);
+    ASSERT(ibid != IndexBufferIDInvalid);
 
-    g_pRenderer->VertexBufferDestroy(pRenderable->vbid);
-    g_pRenderer->IndexBufferDestroy(pRenderable->ibid);
+    g_pRenderer->VertexBufferDestroy(vbid);
+    g_pRenderer->IndexBufferDestroy(ibid);
 }

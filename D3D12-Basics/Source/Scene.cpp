@@ -123,13 +123,3 @@ Scene* Scene::Load(
 
     return pScene;
 }
-
-void Scene::Unload(
-    Scene* pScene)
-{
-    for (auto it = pScene->pRenderables.begin(); it != pScene->pRenderables.end(); it++)
-    {
-        Renderable* pRenderable = *it;
-        Renderable::Destroy(pRenderable);
-    }
-}

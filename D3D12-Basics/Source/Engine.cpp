@@ -26,7 +26,7 @@ void EngineInitialise()
     startTime = HighResClock::now();
     currentFrameTime = startTime;
 
-    //s_pCurrScene = Scene::Load("../Data/Models/sponza.obj");
+    s_pCurrScene = Scene::Load("../Data/Models/sponza.obj");
 
     Vector3 eyePos(0, 0.0f, -10);
     Vector3 targetPos;
@@ -34,12 +34,14 @@ void EngineInitialise()
     camUp.Normalize();
     camera = Camera(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
     g_pRenderer->CameraSet(&camera);
-    //g_pRenderer->SceneSet(s_pCurrScene);
+    g_pRenderer->SceneSet(s_pCurrScene);
 }
 
 void EngineDispose()
 {
-    //Scene::Unload(s_pCurrScene);
+    g_pRenderer->FlushGPU();
+
+    delete s_pCurrScene;
     delete g_pRenderer;
 }
 

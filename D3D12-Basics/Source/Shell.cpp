@@ -154,6 +154,7 @@ static void sCreateWindow(
         trapCursor = true;
         ShowCursor(false);
     }
+    DeleteObject(wc.hbrBackground);
 }
 
 void ShellInitialise(
@@ -163,9 +164,10 @@ void ShellInitialise(
     sCreateWindow(hInstance);
 }
 
-void ShellDispose()
+void ShellDispose(
+    HINSTANCE hInstance)
 {
-
+    UnregisterClass(lpszWindowClassName, hInstance);
 }
 
 void ProcessWindowMessages()

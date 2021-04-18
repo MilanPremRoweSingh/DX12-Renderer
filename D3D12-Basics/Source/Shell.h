@@ -8,7 +8,8 @@
 void ShellInitialise(
     HINSTANCE hInstance);
 
-void ShellDispose();
+void ShellDispose(
+    HINSTANCE hInstance);
 
 void ProcessWindowMessages();
 

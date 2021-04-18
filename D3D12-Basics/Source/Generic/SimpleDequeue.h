@@ -5,6 +5,16 @@ template <typename T>
 class SimpleDequeue
 {
 public:
+    ~SimpleDequeue()
+    {
+        while (tail != nullptr)
+        {
+            SimpleDequeueNode* node = tail;
+            tail = tail->prev;
+            delete node;
+        }
+    }
+
     void PushFront(T value)
     {
         SimpleDequeueNode* node = new SimpleDequeueNode(value);
@@ -92,6 +102,7 @@ private:
         SimpleDequeueNode* next = nullptr;
         SimpleDequeueNode* prev = nullptr;
     };
+
     SimpleDequeueNode* head = nullptr;
     SimpleDequeueNode* tail = nullptr;
 };

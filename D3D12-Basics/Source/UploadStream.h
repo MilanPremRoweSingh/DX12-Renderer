@@ -11,7 +11,7 @@ using Microsoft::WRL::ComPtr;
 
 // For now, this will just be a page based linear allocator
 // Maybe it would be worth having pages which allocate linearly that are stored in a heap, but this will be fine to start (or that's too slow)
-// Having a 'destruction queue' or soemthing like that could be interesting
+// Having a 'destruction queue' or something like that could be interesting
 class UploadStream
 {
 public:
