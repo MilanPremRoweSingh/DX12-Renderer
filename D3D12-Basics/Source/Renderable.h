@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Material.h"
+
 enum VertexBufferID;
 enum IndexBufferID;
 struct Vertex;
@@ -8,19 +10,16 @@ struct Vertex;
 class Renderable
 {
 public:
-    Renderable(VertexBufferID _vbid, IndexBufferID _ibid) :
+    Renderable(VertexBufferID _vbid, IndexBufferID _ibid, const Material& _material) :
         vbid(_vbid),
-        ibid(_ibid) {};
+        ibid(_ibid),
+        material(_material){};
 
     ~Renderable();
 
-    static Renderable* Create(
-        size_t numVerts,
-        Vertex* pVerts,
-        size_t numIndices,
-        uint32* pIndices);
-
     VertexBufferID vbid;
     IndexBufferID ibid;
+
+    Material material;
 private:
 };

@@ -26,13 +26,13 @@ void EngineInitialise()
     startTime = HighResClock::now();
     currentFrameTime = startTime;
 
-    s_pCurrScene = Scene::Load("../Data/Models/sponza.obj");
+    s_pCurrScene = Scene::Load("../Data/Models/sponza-crytek/sponza.obj");
 
-    Vector3 eyePos(0, 0.0f, -10);
+    Vector3 eyePos(0, 0, -10);
     Vector3 targetPos;
     Vector3 camUp(0.0f, 1.0f, 0.0f);
     camUp.Normalize();
-    camera = Camera(eyePos, targetPos, camUp, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
+    camera = Camera(eyePos, targetPos, camUp, 0.01f, 10000.0f, 60.0f, GetWindowAspectRatio());
     g_pRenderer->CameraSet(&camera);
     g_pRenderer->SceneSet(s_pCurrScene);
 }
@@ -58,7 +58,7 @@ void EngineUpdate(float deltaTime)
     eyePos;
     Vector3 targetPos;
     Vector3 camUp(0.0f, 1.0f, 0.0f);
-    camera = Camera(-globals.totalMouseDelta.x, -globals.totalMouseDelta.y, 0.0f, eyePos, 0.1f, 100.0f, 90.0f, GetWindowAspectRatio());
+    camera = Camera(-globals.totalMouseDelta.x, -globals.totalMouseDelta.y, 0.0f, eyePos, 0.01f, 100000.0f, 60.0f, GetWindowAspectRatio());
 
     Vector3 moveDir;
     globals.cameraMoveDirection.Normalize(moveDir);

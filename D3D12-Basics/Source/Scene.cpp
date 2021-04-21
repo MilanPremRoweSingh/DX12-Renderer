@@ -32,25 +32,25 @@ Scene* Scene::Load(
 {
     Assimp::Importer importer;
 
-    const aiScene* assimpScene = importer.ReadFile(fileName, ASSIMP_DEFAULT_IMPORT_FLAGS);
+    const aiScene* pAssimpScene = importer.ReadFile(fileName, ASSIMP_DEFAULT_IMPORT_FLAGS);
 
-    if (!assimpScene || !assimpScene->HasMeshes())
+    if (!pAssimpScene || !pAssimpScene->HasMeshes())
     {
         return nullptr;
     }
 
     Scene* pScene = new Scene();
 
-    pScene->pRenderables.reserve(assimpScene->mNumMeshes);
+    pScene->pRenderables.reserve(pAssimpScene->mNumMeshes);
 
-    for (uint32 idxMesh = 0; idxMesh < assimpScene->mNumMeshes; idxMesh++)
+    for (uint32 idxMesh = 0; idxMesh < pAssimpScene->mNumMeshes; idxMesh++)
     {
-        if (!assimpScene->mMeshes[idxMesh])
+        if (!pAssimpScene->mMeshes[idxMesh])
         {
             continue;
         }
 
-        aiMesh& assimpMesh = *assimpScene->mMeshes[idxMesh];
+        aiMesh& assimpMesh = *pAssimpScene->mMeshes[idxMesh];
 
         if (!assimpMesh.HasPositions())
         {
@@ -115,7 +115,18 @@ Scene* Scene::Load(
 
         VertexBufferID vbid = g_pRenderer->VertexBufferCreate(verts.size(), verts.data());
         IndexBufferID ibid = g_pRenderer->IndexBufferCreate(indices.size(), indices.data());
-        Renderable* pRenderable = new Renderable(vbid, ibid);
+
+        Material material;
+        if (pAssimpScene->HasMaterials())
+        {
+            const aiMaterial* pAssimpMaterial = pAssimpScene->mMaterials[assimpMesh.mMaterialIndex];
+
+            aiColor4D diffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
+            aiGetMaterialColor(pAssimpMaterial, AI_MATKEY_COLOR_DIFFUSE, &diffuseColor);
+            material.diffuse = {diffuseColor.r, diffuseColor.g, diffuseColor.b};
+        }
+
+        Renderable* pRenderable = new Renderable(vbid, ibid, material);
         ASSERT(pRenderable);
 
         pScene->pRenderables.push_back(pRenderable);

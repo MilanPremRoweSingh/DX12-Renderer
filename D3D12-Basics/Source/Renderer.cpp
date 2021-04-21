@@ -55,7 +55,7 @@ void Renderer::ConstantDataDispose()
 
 void Renderer::ConstantDataSetEntry(
     const ConstantDataEntry& entry,
-    void* data)
+    const void* data)
 {
     Utils::SetBit32(entry.id, m_context->dirtyCBFlags);
     memcpy(m_context->pConstantData[entry.id] + entry.offset, data, entry.size);
@@ -134,14 +134,16 @@ void Renderer::Render()
     directionalLight.Normalize();
     ConstantDataSetEntry(CBSTATIC_ENTRY(directionalLight), &directionalLight);
 
-    float diffuse = 0.5f;
-    ConstantDataSetEntry(CBSTATIC_ENTRY(diffuse), &diffuse);
-
     float specular = 0.5f;
     ConstantDataSetEntry(CBSTATIC_ENTRY(specular), &specular);
 
     float specularHardness = 10.0f;
     ConstantDataSetEntry(CBSTATIC_ENTRY(specularHardness), &specularHardness);
+
+    {
+        const Renderable* pRenderable = m_context->pScene->pRenderables[0];
+        ConstantDataSetEntry(CBSTATIC_ENTRY(diffuse), &pRenderable->material.diffuse);
+    }
 
     ConstantDataFlush();
 
@@ -152,6 +154,7 @@ void Renderer::Render()
         for (int32 i = 0; i < m_context->pScene->pRenderables.size(); i++)
         {
             const Renderable* pRenderable = m_context->pScene->pRenderables[i];
+
             m_core->Draw(pRenderable->vbid, pRenderable->ibid);
         }
     }

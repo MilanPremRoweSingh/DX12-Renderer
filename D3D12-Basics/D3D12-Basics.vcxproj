@@ -175,6 +175,7 @@
   <ItemGroup>
     <ClInclude Include="Source\Generic\SimpleDequeue.h" />
     <ClInclude Include="Source\Generic\IDAllocator.h" />
+    <ClInclude Include="Source\Material.h" />
     <ClInclude Include="Source\VertexFormats.h" />
     <ClInclude Include="Source\Scene.h" />
     <ClInclude Include="Source\ConstantBuffers.h" />

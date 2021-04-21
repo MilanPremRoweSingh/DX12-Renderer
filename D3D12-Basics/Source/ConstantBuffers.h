@@ -26,7 +26,8 @@ struct CBStatic : ConstantData
     Matrix4x4 matView;
     Matrix4x4 matProj;
     Vector3 directionalLight;
-    float diffuse;
+    float pad0;
+    Vector3 diffuse;
     float specular;
     float specularHardness;
 };

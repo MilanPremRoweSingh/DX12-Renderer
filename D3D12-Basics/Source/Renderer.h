@@ -1,5 +1,4 @@
 #pragma once
-
 class D3D12Core;
 class Camera;
 class Scene;
@@ -8,8 +7,6 @@ struct RenderConstantEntry;
 struct RenderContext;
 struct ConstantDataEntry;
 struct Vertex;
-
-
 
 enum VertexBufferID;
 enum IndexBufferID;
@@ -30,7 +27,7 @@ public:
 
     void ConstantDataSetEntry(
         const ConstantDataEntry& entry,
-        void* data);
+        const void* data);
     
     void ConstantDataFlush(
         void);
