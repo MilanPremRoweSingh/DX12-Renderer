@@ -6,8 +6,9 @@
 #include "Renderable.h"
 #include "Scene.h"
 
-size_t g_cbSizes[CBCount] = {
+size_t g_cbSizes[CBIDCount] = {
    sizeof(CBStatic),
+   sizeof(CBCommon),
 };
 
 struct RenderContext
@@ -15,7 +16,7 @@ struct RenderContext
     const Camera* pCamera;
     const Scene* pScene;
 
-    ConstantData* pConstantData[CBCount];
+    ConstantData* pConstantData[CBIDCount];
     uint32 dirtyCBFlags;
 };
 
@@ -37,17 +38,18 @@ Renderer::~Renderer()
 
 void Renderer::ConstantDataInitialise()
 {
-    int32 id = CBStart;
+    int32 id = CBIDStart;
     m_context->pConstantData[id++] = new CBStatic();
+    m_context->pConstantData[id++] = new CBCommon();
 
-    ASSERT(id == CBCount);
+    ASSERT(id == CBIDCount);
 
     m_context->dirtyCBFlags = 0;
 }
 
 void Renderer::ConstantDataDispose()
 {
-    for (int32 id = CBStart; id < CBCount; id++)
+    for (int32 id = CBIDStart; id < CBIDCount; id++)
     {
         delete m_context->pConstantData[id];
     }
@@ -69,7 +71,7 @@ void Renderer::ConstantDataFlush(
         return;
     }
 
-    for (int32 id = CBStart; id < CBCount; id++)
+    for (int32 id = CBIDStart; id < CBIDCount; id++)
     {
         if (Utils::TestBit32(id, m_context->dirtyCBFlags))
         {
@@ -163,17 +165,17 @@ void Renderer::Render()
             ConstantDataSetEntry(CBSTATIC_ENTRY(directionalLight), &directionalLight);
 
             float specular = 0.5f;
-            ConstantDataSetEntry(CBSTATIC_ENTRY(specular), &specular);
+            ConstantDataSetEntry(CBCOMMON_ENTRY(specular), &specular);
 
             float specularHardness = 10.0f;
-            ConstantDataSetEntry(CBSTATIC_ENTRY(specularHardness), &specularHardness);
+            ConstantDataSetEntry(CBCOMMON_ENTRY(specularHardness), &specularHardness);
 
             ConstantDataFlush();
 
             m_core->Begin(i == 0);
             const Renderable* pRenderable = m_context->pScene->pRenderables[i];
 
-            ConstantDataSetEntry(CBSTATIC_ENTRY(diffuse), &pRenderable->material.diffuse);
+            ConstantDataSetEntry(CBCOMMON_ENTRY(diffuse), &pRenderable->material.diffuse);
             
             ConstantDataFlush();
 

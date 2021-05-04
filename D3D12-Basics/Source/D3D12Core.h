@@ -151,7 +151,7 @@ private:
 
      ComPtr<ID3D12RootSignature> m_defaultRootSignature;
 
-     ComPtr<ID3D12Resource> m_constantBuffers[CBCount];
+     ComPtr<ID3D12Resource> m_constantBuffers[CBIDCount];
 
      // 'General' i.e. CBV + SRV + UAV
      ComPtr<ID3D12DescriptorHeap> m_generalDescriptorHeap;

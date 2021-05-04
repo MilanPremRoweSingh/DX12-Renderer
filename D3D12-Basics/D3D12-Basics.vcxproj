@@ -173,6 +173,8 @@
     <ClCompile Include="Source\UploadStream.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Shaders\ConstantBuffers.h" />
+    <ClInclude Include="Shaders\Lighting.h" />
     <ClInclude Include="Source\Generic\SimpleDequeue.h" />
     <ClInclude Include="Source\Generic\IDAllocator.h" />
     <ClInclude Include="Source\Material.h" />
@@ -195,6 +197,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\Shaders.hlsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

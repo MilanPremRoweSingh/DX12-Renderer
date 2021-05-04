@@ -1,15 +1,5 @@
+#include "ConstantBuffers.h"
 #include "Lighting.h"
-
-cbuffer ConstantBuffer : register(b0)
-{
-	float4x4 matView;
-	float4x4 matProj;
-	float3 directionalLight;
-	float pad;
-	float3 diffuse;
-	float specular;
-	float specularHardness;
-};
 
 SamplerState Sampler;
 Texture2D Texture;

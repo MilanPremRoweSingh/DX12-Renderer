@@ -205,10 +205,10 @@ void D3D12Core::CreateDefaultRootSignature()
 {
     D3D12_ROOT_SIGNATURE_DESC desc = {};
 
-    D3D12_ROOT_PARAMETER params[CBCount + 1];
+    D3D12_ROOT_PARAMETER params[CBIDCount + 1];
     uint32 idxParam = 0;
 
-    for (int32 id = 0; id < CBCount; id++)
+    for (int32 id = 0; id < CBIDCount; id++)
     {
         D3D12_ROOT_PARAMETER& cbvParam = params[idxParam++];
         cbvParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -261,7 +261,7 @@ void D3D12Core::CreateDefaultRootSignature()
 void D3D12Core::ConstantBuffersInit(
     void)
 {
-    for (int32 id = CBStart; id < CBCount; id++)
+    for (int32 id = CBIDStart; id < CBIDCount; id++)
     {
         D3D12_HEAP_PROPERTIES heapProps = {};
         heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -592,14 +592,14 @@ void D3D12Core::Begin(
     m_cmdList->SetGraphicsRootSignature(m_defaultRootSignature.Get());
 
     uint32 rootParamIdx = 0;
-    for (int32 id = CBStart; id < CBCount; id++)
+    for (int32 id = CBIDStart; id < CBIDCount; id++)
     {
         m_cmdList->SetGraphicsRootConstantBufferView(rootParamIdx++, m_constantBuffers[id]->GetGPUVirtualAddress());
     }
 
     ID3D12DescriptorHeap* heaps[] = { m_generalDescriptorHeap.Get() };
-    m_cmdList->SetDescriptorHeaps(rootParamIdx++, heaps);
-    m_cmdList->SetGraphicsRootDescriptorTable(1, m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+    m_cmdList->SetDescriptorHeaps(1, heaps);
+    m_cmdList->SetGraphicsRootDescriptorTable(rootParamIdx++, m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
     m_cmdList->RSSetViewports(1, &m_viewport);
     m_cmdList->RSSetScissorRects(1, &m_scissorRect);
