@@ -121,9 +121,9 @@ Scene* Scene::Load(
         {
             const aiMaterial* pAssimpMaterial = pAssimpScene->mMaterials[assimpMesh.mMaterialIndex];
 
-            aiColor4D diffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
-            aiGetMaterialColor(pAssimpMaterial, AI_MATKEY_COLOR_DIFFUSE, &diffuseColor);
-            material.diffuse = {diffuseColor.r, diffuseColor.g, diffuseColor.b};
+            aiColor3D color(0.f, 0.f, 0.f);
+            pAssimpMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+            material.diffuse = { color.r, color.g, color.b};
         }
 
         Renderable* pRenderable = new Renderable(vbid, ibid, material);

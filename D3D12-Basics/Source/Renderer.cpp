@@ -120,7 +120,7 @@ void Renderer::Render()
         return;
     }
 
-    Matrix4x4 matView;
+    /*Matrix4x4 matView;
     m_context->pCamera->GetViewMatrix(matView);
     matView.Transpose(matView);
     ConstantDataSetEntry(CBSTATIC_ENTRY(matView), &matView);
@@ -140,26 +140,50 @@ void Renderer::Render()
     float specularHardness = 10.0f;
     ConstantDataSetEntry(CBSTATIC_ENTRY(specularHardness), &specularHardness);
 
-    {
-        const Renderable* pRenderable = m_context->pScene->pRenderables[0];
-        ConstantDataSetEntry(CBSTATIC_ENTRY(diffuse), &pRenderable->material.diffuse);
-    }
-
     ConstantDataFlush();
 
-    m_core->Begin();
+    m_core->Begin();*/
 
     if (m_context->pScene)
     {
         for (int32 i = 0; i < m_context->pScene->pRenderables.size(); i++)
         {
+            Matrix4x4 matView;
+            m_context->pCamera->GetViewMatrix(matView);
+            matView.Transpose(matView);
+            ConstantDataSetEntry(CBSTATIC_ENTRY(matView), &matView);
+
+            Matrix4x4 matProj;
+            m_context->pCamera->GetProjMatrix(matProj);
+            matProj.Transpose(matProj);
+            ConstantDataSetEntry(CBSTATIC_ENTRY(matProj), &matProj);
+
+            Vector3 directionalLight(1, 1, -1);
+            directionalLight.Normalize();
+            ConstantDataSetEntry(CBSTATIC_ENTRY(directionalLight), &directionalLight);
+
+            float specular = 0.5f;
+            ConstantDataSetEntry(CBSTATIC_ENTRY(specular), &specular);
+
+            float specularHardness = 10.0f;
+            ConstantDataSetEntry(CBSTATIC_ENTRY(specularHardness), &specularHardness);
+
+            ConstantDataFlush();
+
+            m_core->Begin(i == 0);
             const Renderable* pRenderable = m_context->pScene->pRenderables[i];
 
+            ConstantDataSetEntry(CBSTATIC_ENTRY(diffuse), &pRenderable->material.diffuse);
+            
+            ConstantDataFlush();
+
             m_core->Draw(pRenderable->vbid, pRenderable->ibid);
+
+            m_core->End();
         }
     }
 
-    m_core->End();
+    //m_core->End();
 
     m_core->Present();
 

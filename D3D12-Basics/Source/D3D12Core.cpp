@@ -585,7 +585,7 @@ void D3D12Core::WaitForGPU()
 }
 
 void D3D12Core::Begin(
-    void)
+    bool bClear)
 {
     CommandListBegin();
 
@@ -627,10 +627,13 @@ void D3D12Core::Begin(
 
     m_cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHadle);
 
-    const float clearColor[] = { 86.0f / 255.0f, 0.0f / 255.0f, 94.0f / 255.0f, 1.0f };
-    m_cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-    m_cmdList->ClearDepthStencilView(dsvHadle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-    m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    if (bClear)
+    {
+        const float clearColor[] = { 86.0f / 255.0f, 0.0f / 255.0f, 94.0f / 255.0f, 1.0f };
+        m_cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+        m_cmdList->ClearDepthStencilView(dsvHadle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+        m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    }
 }
 
 void D3D12Core::Draw(

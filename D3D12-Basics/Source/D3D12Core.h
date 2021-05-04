@@ -109,7 +109,7 @@ public:
         void);
 
     void Begin(
-        void);
+        bool bClear = false);
 
     void Draw(
         VertexBufferID vbid,

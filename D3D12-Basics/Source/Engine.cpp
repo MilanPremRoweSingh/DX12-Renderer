@@ -26,7 +26,7 @@ void EngineInitialise()
     startTime = HighResClock::now();
     currentFrameTime = startTime;
 
-    s_pCurrScene = Scene::Load("../Data/Models/sponza-crytek/sponza.obj");
+    s_pCurrScene = Scene::Load("../Data/Models/CursedCornell.obj");
 
     Vector3 eyePos(0, 0, -10);
     Vector3 targetPos;
