@@ -3,13 +3,15 @@
 #include <dxgi1_6.h>
 #include <vector>
 
-#include "VertexFormats.h"
-#include "ConstantBuffers.h"
-#include "Renderer.h"
-#include "D3D12Header.h"
-#include "Device.h"
-#include "UploadStream.h"
 #include "Generic/IDAllocator.h"
+
+#include "Renderer/VertexFormats.h"
+#include "Renderer/ConstantBuffers.h"
+#include "Renderer/Renderer.h"
+
+#include "Renderer/Core/D3D12Header.h"
+#include "Renderer/Core/Device.h"
+#include "Renderer/Core/UploadStream.h"
 
 
 // Enums ///////////////////////////////////////////////////////////////////////////////////

@@ -2,9 +2,10 @@
 
 #include <d3dcompiler.h>
 
-#include "D3D12Header.h"   
 #include "Shell.h"
 #include "Engine.h"
+
+#include "Renderer/Core/D3D12Header.h"   
 
 // We won't want to include these but we're doing it for now so we can build enough functionality to be able to restructure it when we a) have enough idea of the functionality we want and b) would actually benefit from doing so.
 #include <assimp/postprocess.h>

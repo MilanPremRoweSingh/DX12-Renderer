@@ -1,10 +1,11 @@
 #include "Renderer.h"
 
 #include "Camera.h"
-#include "ConstantBuffers.h"
-#include "D3D12Core.h"
-#include "Renderable.h"
 #include "Scene.h"
+
+#include "Renderer/ConstantBuffers.h"
+#include "Renderer/Renderable.h"
+#include "Renderer/Core/D3D12Core.h"
 
 size_t g_cbSizes[CBIDCount] = {
    sizeof(CBStatic),

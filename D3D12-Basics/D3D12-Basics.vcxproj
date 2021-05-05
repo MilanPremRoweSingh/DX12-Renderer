@@ -123,7 +123,7 @@
       <ForcedIncludeFiles>EnginePCH.h</ForcedIncludeFiles>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4065</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>$(ProjectDir)/External;$(SolutionDir)Dependencies\assimp_x64-windows\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)/Source;$(ProjectDir)/External;$(SolutionDir)Dependencies\assimp_x64-windows\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -158,19 +158,19 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Source\Scene.cpp" />
-    <ClCompile Include="Source\Device.cpp" />
+    <ClCompile Include="Source\Renderer\Core\Device.cpp" />
     <ClCompile Include="Source\Camera.cpp" />
-    <ClCompile Include="Source\D3D12Core.cpp" />
+    <ClCompile Include="Source\Renderer\Core\D3D12Core.cpp" />
     <ClCompile Include="Source\Engine.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Source\Globals.cpp" />
     <ClCompile Include="Source\Main.cpp" />
-    <ClCompile Include="Source\Renderable.cpp" />
-    <ClCompile Include="Source\Renderer.cpp" />
+    <ClCompile Include="Source\Renderer\Renderable.cpp" />
+    <ClCompile Include="Source\Renderer\Renderer.cpp" />
     <ClCompile Include="Source\Shell.cpp" />
-    <ClCompile Include="Source\UploadStream.cpp" />
+    <ClCompile Include="Source\Renderer\Core\UploadStream.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shaders\ConstantBuffers.h" />
@@ -178,21 +178,21 @@
     <ClInclude Include="Source\Generic\SimpleDequeue.h" />
     <ClInclude Include="Source\Generic\IDAllocator.h" />
     <ClInclude Include="Source\Material.h" />
-    <ClInclude Include="Source\VertexFormats.h" />
+    <ClInclude Include="Source\Renderer\VertexFormats.h" />
     <ClInclude Include="Source\Scene.h" />
-    <ClInclude Include="Source\ConstantBuffers.h" />
-    <ClInclude Include="Source\D3D12Header.h" />
-    <ClInclude Include="Source\Device.h" />
+    <ClInclude Include="Source\Renderer\ConstantBuffers.h" />
+    <ClInclude Include="Source\Renderer\Core\D3D12Header.h" />
+    <ClInclude Include="Source\Renderer\Core\Device.h" />
     <ClInclude Include="Source\Camera.h" />
-    <ClInclude Include="Source\D3D12Core.h" />
+    <ClInclude Include="Source\Renderer\Core\D3D12Core.h" />
     <ClInclude Include="Source\Engine.h" />
     <ClInclude Include="Source\EnginePCH.h" />
     <ClInclude Include="Source\Globals.h" />
-    <ClInclude Include="Source\Renderable.h" />
-    <ClInclude Include="Source\Renderer.h" />
+    <ClInclude Include="Source\Renderer\Renderable.h" />
+    <ClInclude Include="Source\Renderer\Renderer.h" />
     <ClInclude Include="Source\Shell.h" />
     <ClInclude Include="Source\Types.h" />
-    <ClInclude Include="Source\UploadStream.h" />
+    <ClInclude Include="Source\Renderer\Core\UploadStream.h" />
     <ClInclude Include="Source\Generic\Utils.h" />
   </ItemGroup>
   <ItemGroup>

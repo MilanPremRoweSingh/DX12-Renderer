@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Device.h"
+#include "Renderer/Core/Device.h"
 
 #include <d3d12.h>
 #include <wrl/client.h>

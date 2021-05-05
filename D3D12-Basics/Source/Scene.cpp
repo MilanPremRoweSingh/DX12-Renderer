@@ -1,8 +1,9 @@
 #include "Scene.h"
 
 #include "Engine.h"
-#include "VertexFormats.h"
-#include "Renderable.h"
+
+#include "Renderer/VertexFormats.h"
+#include "Renderer/Renderable.h"
 
 // For now we do all assimp parsing in Scene::CreateFromFile, if we do more parsing later, it's probably worth moving it to its own file 
 #include <assimp/postprocess.h>
