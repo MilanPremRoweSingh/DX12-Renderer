@@ -111,7 +111,7 @@ public:
         void);
 
     void Begin(
-        bool bClear = false);
+        void);
 
     void Draw(
         VertexBufferID vbid,
@@ -153,7 +153,11 @@ private:
 
      ComPtr<ID3D12RootSignature> m_defaultRootSignature;
 
-     ComPtr<ID3D12Resource> m_constantBuffers[CBIDCount];
+     ComPtr<ID3D12Resource> m_staticConstantBuffer;
+
+     // We will allocate constant buffer data every time it's changed, but we only ever need a reference to the latest allocation 
+     // we free the upload stream memory independent of the allocations it provides.
+     UploadStream::Allocation m_dynamicConstantBufferAllocations[CBIDDynamicCount];
 
      // 'General' i.e. CBV + SRV + UAV
      ComPtr<ID3D12DescriptorHeap> m_generalDescriptorHeap;

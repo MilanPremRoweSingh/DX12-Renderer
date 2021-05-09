@@ -8,9 +8,10 @@
 enum ConstantBufferID : int32
 {
     CBIDStart = 0,
-    CBIDStatic = CBIDStart,
-    CBIDCommon,
-    CBIDCount,
+    CBIDCommon = CBIDStart,
+    CBIDDynamicCount,
+    CBIDStatic = CBIDDynamicCount,
+    CBIDCount
 };
 
 struct ConstantDataEntry

@@ -78,7 +78,7 @@ bool UploadStream::Page::Allocate(size_t size, size_t align, Allocation& allocOu
     }
     allocOut.buffer = pageBuffer.Get();
     allocOut.cpuAddr = (void*)((INT8*)cpuAddr + alignedOffset);
-    allocOut.offset = alignedOffset;
+    allocOut.bufferOffset = alignedOffset;
     offset = nextOffset;
 
     return true;

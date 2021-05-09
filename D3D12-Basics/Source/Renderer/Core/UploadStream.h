@@ -19,8 +19,13 @@ public:
     {
         // Afaik you have to have a pointer to the buffer itself to be able to copy from it, so allocations must track the resource they came from
         ID3D12Resource* buffer;
-        size_t offset;
+        size_t bufferOffset;
         void* cpuAddr;
+
+        inline D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress()
+        {
+            return buffer->GetGPUVirtualAddress() + bufferOffset;
+        }
     };
     
     UploadStream(Device* device, size_t pageSize = _2MB);

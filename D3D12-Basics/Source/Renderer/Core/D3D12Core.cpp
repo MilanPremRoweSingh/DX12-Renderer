@@ -262,14 +262,11 @@ void D3D12Core::CreateDefaultRootSignature()
 void D3D12Core::ConstantBuffersInit(
     void)
 {
-    for (int32 id = CBIDStart; id < CBIDCount; id++)
-    {
-        D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-        m_device->CreateBuffer(heapProps, Utils::AlignUp(g_cbSizes[id], (size_t)D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT), D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &m_constantBuffers[id]);
-    }
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+    heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+    m_device->CreateBuffer(heapProps, Utils::AlignUp(g_cbSizes[CBIDStatic], (size_t)D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT), D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &m_staticConstantBuffer);
 }
 
 void D3D12Core::ConstantBufferSetData(
@@ -277,12 +274,21 @@ void D3D12Core::ConstantBufferSetData(
     size_t size,
     void* data)
 {
-    D3D12_RANGE range = { 0,0 };
-    void* cbData;
-    m_constantBuffers[id]->Map(0, &range, &cbData);
-    memcpy(cbData, data, g_cbSizes[id]);
-    range = { 0, g_cbSizes[id] };
-    m_constantBuffers[id]->Unmap(0, &range);
+    if (id == CBIDStatic)
+    {
+        D3D12_RANGE range = { 0,0 };
+        void* cbData;
+        m_staticConstantBuffer->Map(0, &range, &cbData);
+        memcpy(cbData, data, g_cbSizes[id]);
+        range = { 0, g_cbSizes[id] };
+        m_staticConstantBuffer->Unmap(0, &range);
+    }
+    else
+    {
+        m_dynamicConstantBufferAllocations[id] = m_uploadStream->AllocateAligned(Utils::AlignUp(size, (size_t)D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        memcpy(m_dynamicConstantBufferAllocations[id].cpuAddr, data, size);
+    }
+    
 }
 
 static void sLoadCube(D3D12Core& context)
@@ -393,7 +399,7 @@ void D3D12Core::BufferCreate(
 
     UploadStream::Allocation uploadBufferAlloc = m_uploadStream->Allocate(size);
     memcpy(uploadBufferAlloc.cpuAddr, initialData, size);
-    m_cmdList->CopyBufferRegion(*ppBuffer, 0, uploadBufferAlloc.buffer, uploadBufferAlloc.offset, size);
+    m_cmdList->CopyBufferRegion(*ppBuffer, 0, uploadBufferAlloc.buffer, uploadBufferAlloc.bufferOffset, size);
     if (initialState != D3D12_RESOURCE_STATE_COPY_DEST)
     {
         D3D12_RESOURCE_TRANSITION_BARRIER transition;
@@ -438,7 +444,7 @@ void D3D12Core::Texture2DCreate(
     footprint.Footprint.RowPitch = Utils::AlignUp(rowPitch, (uint32)D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
 
     UploadStream::Allocation uploadBufferAlloc = m_uploadStream->AllocateAligned(slicePitch, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
-    footprint.Offset = uploadBufferAlloc.offset;
+    footprint.Offset = uploadBufferAlloc.bufferOffset;
 
     uint32 alignedRowPitch = Utils::AlignUp(rowPitch, (uint32)D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
     for (uint32 i = 0; i < height; i++)
@@ -586,17 +592,16 @@ void D3D12Core::WaitForGPU()
 }
 
 void D3D12Core::Begin(
-    bool bClear)
+    void)
 {
     CommandListBegin();
 
     m_cmdList->SetGraphicsRootSignature(m_defaultRootSignature.Get());
 
     uint32 rootParamIdx = 0;
-    for (int32 id = CBIDStart; id < CBIDCount; id++)
-    {
-        m_cmdList->SetGraphicsRootConstantBufferView(rootParamIdx++, m_constantBuffers[id]->GetGPUVirtualAddress());
-    }
+    m_cmdList->SetGraphicsRootConstantBufferView(rootParamIdx++, m_staticConstantBuffer->GetGPUVirtualAddress());
+    rootParamIdx += CBIDDynamicCount;
+
 
     ID3D12DescriptorHeap* heaps[] = { m_generalDescriptorHeap.Get() };
     m_cmdList->SetDescriptorHeaps(1, heaps);
@@ -628,7 +633,6 @@ void D3D12Core::Begin(
 
     m_cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHadle);
 
-    if (bClear)
     {
         const float clearColor[] = { 86.0f / 255.0f, 0.0f / 255.0f, 94.0f / 255.0f, 1.0f };
         m_cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
@@ -641,6 +645,12 @@ void D3D12Core::Draw(
     VertexBufferID vbid,
     IndexBufferID ibid)
 {
+    uint32 rootParamIdx = 1;
+    for (int32 i = CBIDStart; i < CBIDDynamicCount; i++)
+    {
+        m_cmdList->SetGraphicsRootConstantBufferView(rootParamIdx++, m_dynamicConstantBufferAllocations[i].GetGPUVirtualAddress());
+    }
+
     // Draw
     m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBuffers[vbid].view);
     m_cmdList->IASetIndexBuffer(&m_indexBuffers[ibid].view);
