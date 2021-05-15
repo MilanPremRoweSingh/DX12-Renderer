@@ -14,6 +14,7 @@
 
 const float constDefaultVertexNormal[] = { 0.0f, 0.0f, 1.0f };
 const float constDefaultVertexColour[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+const float constDefaultUV[] = { 0.0f, 0.0f };
 
 Scene::Scene()
 {
@@ -86,6 +87,17 @@ Scene* Scene::Load(
             {
                 static_assert(sizeof(vertex.col) == sizeof(constDefaultVertexColour), "Default colour size does not match");
                 memcpy(&vertex.col, (void*)constDefaultVertexColour, sizeof(vertex.col));
+            }
+
+            if (assimpMesh.HasTextureCoords(0))
+            {
+                ASSERT(sizeof(vertex.uv) == assimpMesh.mNumUVComponents[0]*sizeof(vertex.uv[0]));
+                memcpy(&vertex.uv, (void*)&assimpMesh.mTextureCoords[0][idxVert], sizeof(vertex.uv));
+            }
+            else
+            {
+                static_assert(sizeof(vertex.uv) == sizeof(constDefaultUV), "Default UV size does not match");
+                memcpy(&vertex.uv, (void*)constDefaultUV, sizeof(vertex.uv));
             }
 
             verts.push_back(vertex);

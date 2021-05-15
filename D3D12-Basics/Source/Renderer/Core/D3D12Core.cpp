@@ -192,7 +192,7 @@ void D3D12Core::InitialisePipeline()
         desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
         desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
         m_device->CreateDescriptorHeap(desc, &m_generalDescriptorHeap, m_generalDescriptorSize);
-        m_nextGeneralDescriptor= { m_generalDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),  m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart() };
+        m_nextGeneralDescriptor = { m_generalDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),  m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart() };
     }
 
     ConstantBuffersInit();
@@ -244,7 +244,7 @@ void D3D12Core::CreateDefaultRootSignature()
     samplerDesc.MaxLOD = 0;
     samplerDesc.ShaderRegister = 0;
     samplerDesc.RegisterSpace = 0;
-    samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
     desc.NumParameters = idxParam;
     desc.pParameters = params;
@@ -347,6 +347,7 @@ void D3D12Core::InitialAssetsLoad()
         inputElementDescs.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
         inputElementDescs.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
         inputElementDescs.push_back({ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        inputElementDescs.push_back({ "UV", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 40, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
         desc.pRootSignature = m_defaultRootSignature.Get();
