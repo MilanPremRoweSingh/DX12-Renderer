@@ -18,6 +18,13 @@
 #define USE_HARDCODED_SCENE 0
 #define D3D_COMPILE_STANDARD_FILE_INCLUDE ((ID3DInclude*)(UINT_PTR)1)
 
+enum RootSignatureSlot : int32
+{
+    RSS_SRVTABLE,
+    RSS_CBSTART,
+    RSS_COUNT = RSS_CBSTART + CBIDCount
+};
+
 // Local Functions  ////////////////////////////////////////////////////////////////////////
 
 static void sCompileShader(
@@ -202,38 +209,48 @@ void D3D12Core::InitialisePipeline()
     m_device->CreateFence(0, &m_fence);
 }
 
-void D3D12Core::CreateDefaultRootSignature()
+void D3D12Core::CreateRootSignature()
 {
     D3D12_ROOT_SIGNATURE_DESC desc = {};
 
-    D3D12_ROOT_PARAMETER params[CBIDCount + 1];
-    uint32 idxParam = 0;
+    // Root Parameterss
+    D3D12_ROOT_PARAMETER params[RSS_COUNT];
 
-    for (int32 id = 0; id < CBIDCount; id++)
+    // SRV Table
     {
-        D3D12_ROOT_PARAMETER& cbvParam = params[idxParam++];
-        cbvParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-        cbvParam.Descriptor.RegisterSpace = 0;
-        cbvParam.Descriptor.ShaderRegister = id;
-        cbvParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        D3D12_ROOT_DESCRIPTOR_TABLE table = {};
+
+        D3D12_DESCRIPTOR_RANGE range = {};
+        range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        range.NumDescriptors = 1;
+        range.BaseShaderRegister = 0;
+        range.OffsetInDescriptorsFromTableStart = 0;
+
+        table.NumDescriptorRanges = 1;
+        table.pDescriptorRanges = &range;
+
+        D3D12_ROOT_PARAMETER& textureTableParam = params[RSS_SRVTABLE];
+        textureTableParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        textureTableParam.DescriptorTable = table;
+        textureTableParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     }
 
-    D3D12_ROOT_DESCRIPTOR_TABLE table = {};
+    // Inline CBVs
+    {
+        for (int32 id = 0; id < CBIDCount; id++)
+        {
+            D3D12_ROOT_PARAMETER& cbvParam = params[RSS_CBSTART + id];
+            cbvParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+            cbvParam.Descriptor.RegisterSpace = 0;
+            cbvParam.Descriptor.ShaderRegister = id;
+            cbvParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        }
+    }
 
-    D3D12_DESCRIPTOR_RANGE range = {};
-    range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    range.NumDescriptors = 1;
-    range.BaseShaderRegister = 0;
-    range.OffsetInDescriptorsFromTableStart = 0;
+    desc.NumParameters = RSS_COUNT;
+    desc.pParameters = params;
 
-    table.NumDescriptorRanges = 1;
-    table.pDescriptorRanges = &range;
-
-    D3D12_ROOT_PARAMETER& textureTableParam = params[idxParam++];
-    textureTableParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    textureTableParam.DescriptorTable = table;
-    textureTableParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
+    // Static Sampler(s)
     D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
     samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
     samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
@@ -246,10 +263,9 @@ void D3D12Core::CreateDefaultRootSignature()
     samplerDesc.RegisterSpace = 0;
     samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-    desc.NumParameters = idxParam;
-    desc.pParameters = params;
     desc.NumStaticSamplers = 1;
     desc.pStaticSamplers = &samplerDesc;
+
     desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
     ComPtr<ID3DBlob> signature;
@@ -331,7 +347,7 @@ static void sLoadCube(D3D12Core& context)
 
 void D3D12Core::InitialAssetsLoad()
 {
-    CreateDefaultRootSignature();
+    CreateRootSignature();
 
     // Compile Shaders and create PSO
     ComPtr<ID3DBlob> vertexShader;
@@ -600,13 +616,12 @@ void D3D12Core::Begin(
     m_cmdList->SetGraphicsRootSignature(m_defaultRootSignature.Get());
 
     uint32 rootParamIdx = 0;
-    m_cmdList->SetGraphicsRootConstantBufferView(rootParamIdx++, m_staticConstantBuffer->GetGPUVirtualAddress());
-    rootParamIdx += CBIDDynamicCount;
+    m_cmdList->SetGraphicsRootConstantBufferView(RSS_CBSTART + CBIDStatic, m_staticConstantBuffer->GetGPUVirtualAddress());
 
 
     ID3D12DescriptorHeap* heaps[] = { m_generalDescriptorHeap.Get() };
     m_cmdList->SetDescriptorHeaps(1, heaps);
-    m_cmdList->SetGraphicsRootDescriptorTable(rootParamIdx++, m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+    m_cmdList->SetGraphicsRootDescriptorTable(RSS_SRVTABLE, m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
     m_cmdList->RSSetViewports(1, &m_viewport);
     m_cmdList->RSSetScissorRects(1, &m_scissorRect);
@@ -646,10 +661,9 @@ void D3D12Core::Draw(
     VertexBufferID vbid,
     IndexBufferID ibid)
 {
-    uint32 rootParamIdx = 1;
     for (int32 i = CBIDStart; i < CBIDDynamicCount; i++)
     {
-        m_cmdList->SetGraphicsRootConstantBufferView(rootParamIdx++, m_dynamicConstantBufferAllocations[i].GetGPUVirtualAddress());
+        m_cmdList->SetGraphicsRootConstantBufferView(RSS_CBSTART + i, m_dynamicConstantBufferAllocations[i].GetGPUVirtualAddress());
     }
 
     // Draw

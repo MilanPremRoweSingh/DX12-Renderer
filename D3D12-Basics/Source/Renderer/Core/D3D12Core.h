@@ -129,7 +129,7 @@ private:
     D3D12_DESCRIPTOR_ADDRESS AllocateGeneralDescriptor(
         void);
 
-     void CreateDefaultRootSignature(
+     void CreateRootSignature(
          void);
 
      void ConstantBuffersInit(

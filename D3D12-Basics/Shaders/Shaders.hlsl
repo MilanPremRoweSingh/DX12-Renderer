@@ -46,8 +46,9 @@ PS_OUT PSMain(VS_OUT I)
 	float3 n = normalize(I.normal);
 	float3 l = directionalLight;
 
-	float3 albedoColour = Texture.Sample(Sampler, I.uv);
+	float3 albedoColour = Texture.Sample(Sampler, I.uv).rgb;
 
-	O.col.xyz = albedoColour * diffuse * Lambertian(n, l) + specular * BlinnPhongSpecular(l, v, n, specularHardness);
+	O.col.a = 1.0f;
+	O.col.rgb = albedoColour * diffuse * Lambertian(n, l) + specular * BlinnPhongSpecular(l, v, n, specularHardness);
 	return O;
 }
