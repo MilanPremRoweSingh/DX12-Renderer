@@ -173,6 +173,7 @@
     <ClCompile Include="Source\Renderer\Core\UploadStream.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="External\stb_image.h" />
     <ClInclude Include="Shaders\ConstantBuffers.h" />
     <ClInclude Include="Shaders\Lighting.h" />
     <ClInclude Include="Source\Generic\SimpleDequeue.h" />

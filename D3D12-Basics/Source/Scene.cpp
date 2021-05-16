@@ -5,10 +5,14 @@
 #include "Renderer/VertexFormats.h"
 #include "Renderer/Renderable.h"
 
-// For now we do all assimp parsing in Scene::CreateFromFile, if we do more parsing later, it's probably worth moving it to its own file 
 #include <assimp/postprocess.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
+#define TEXTURE_DIR_PATH "../Data/Textures/"
 
 #define ASSIMP_DEFAULT_IMPORT_FLAGS  aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals | aiProcess_MakeLeftHanded | aiProcess_FlipWindingOrder
 
@@ -137,6 +141,19 @@ Scene* Scene::Load(
             aiColor3D color(0.f, 0.f, 0.f);
             pAssimpMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color);
             material.diffuse = { color.r, color.g, color.b};
+
+            if (pAssimpMaterial->GetTextureCount(aiTextureType_DIFFUSE))
+            {
+                aiString assimpTexPath;
+                assimpTexPath.Set(TEXTURE_DIR_PATH);
+
+                aiString assimpTexName;
+                pAssimpMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &assimpTexName);
+                assimpTexPath.Append(assimpTexName.C_Str());
+
+                int32 width, height, numChannels;
+                unsigned char* pTexData = stbi_load(assimpTexPath.C_Str(), &width, &height, &numChannels, 0);
+            }
         }
 
         Renderable* pRenderable = new Renderable(vbid, ibid, material);
