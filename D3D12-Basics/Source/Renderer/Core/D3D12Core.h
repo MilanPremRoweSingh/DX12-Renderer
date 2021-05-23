@@ -12,6 +12,7 @@
 #include "Renderer/Core/D3D12Header.h"
 #include "Renderer/Core/Device.h"
 #include "Renderer/Core/UploadStream.h"
+#include "Renderer/Core/DescriptorPool.h"
 
 
 // Enums ///////////////////////////////////////////////////////////////////////////////////
@@ -163,6 +164,8 @@ private:
      ComPtr<ID3D12DescriptorHeap> m_generalDescriptorHeap;
      uint32 m_generalDescriptorSize;
      D3D12_DESCRIPTOR_ADDRESS m_nextGeneralDescriptor;
+
+     DescriptorPool* m_pDescriptorPool;
 
      ComPtr<ID3D12Resource> m_texture;
      

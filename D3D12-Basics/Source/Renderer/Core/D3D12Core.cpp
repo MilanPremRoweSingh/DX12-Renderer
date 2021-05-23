@@ -16,7 +16,12 @@
 // Defines /////////////////////////////////////////////////////////////////////////////////
 
 #define USE_HARDCODED_SCENE 0
+
 #define D3D_COMPILE_STANDARD_FILE_INCLUDE ((ID3DInclude*)(UINT_PTR)1)
+
+#define SRV_DESCRIPTOR_POOL_SIZE 5000
+#define SRV_DESCRIPTOR_TABLE_MAX_SLOTS 16
+
 
 enum RootSignatureSlot : int32
 {
@@ -91,6 +96,8 @@ D3D12Core::D3D12Core()
     m_scissorRect.bottom = GetWindowHeight();
 
     m_uploadStream = new UploadStream(m_device);
+
+    m_pDescriptorPool = new DescriptorPool(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, SRV_DESCRIPTOR_POOL_SIZE, SRV_DESCRIPTOR_TABLE_MAX_SLOTS);
 
     InitialisePipeline();
     InitialAssetsLoad();
@@ -197,7 +204,7 @@ void D3D12Core::InitialisePipeline()
         D3D12_DESCRIPTOR_HEAP_DESC desc = {};
         desc.NumDescriptors = 2;
         desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+        desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
         m_device->CreateDescriptorHeap(desc, &m_generalDescriptorHeap, m_generalDescriptorSize);
         m_nextGeneralDescriptor = { m_generalDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),  m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart() };
     }
@@ -619,9 +626,8 @@ void D3D12Core::Begin(
     m_cmdList->SetGraphicsRootConstantBufferView(RSS_CBSTART + CBIDStatic, m_staticConstantBuffer->GetGPUVirtualAddress());
 
 
-    ID3D12DescriptorHeap* heaps[] = { m_generalDescriptorHeap.Get() };
+    ID3D12DescriptorHeap* heaps[] = { m_pDescriptorPool->GetGPUDescriptorHeap() };
     m_cmdList->SetDescriptorHeaps(1, heaps);
-    m_cmdList->SetGraphicsRootDescriptorTable(RSS_SRVTABLE, m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
     m_cmdList->RSSetViewports(1, &m_viewport);
     m_cmdList->RSSetScissorRects(1, &m_scissorRect);
@@ -661,6 +667,12 @@ void D3D12Core::Draw(
     VertexBufferID vbid,
     IndexBufferID ibid)
 {
+    // TODO : Separate texture binding out and expose it to the Renderer, then just commit staged descriptors here
+    m_pDescriptorPool->StageDescriptor(0, m_generalDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+    m_cmdList->SetGraphicsRootDescriptorTable(RSS_SRVTABLE, m_pDescriptorPool->CommitStagedDescriptors());
+
+
     for (int32 i = CBIDStart; i < CBIDDynamicCount; i++)
     {
         m_cmdList->SetGraphicsRootConstantBufferView(RSS_CBSTART + i, m_dynamicConstantBufferAllocations[i].GetGPUVirtualAddress());
@@ -701,4 +713,5 @@ void D3D12Core::Present()
     m_frameIndex = m_swapChain3->GetCurrentBackBufferIndex();
 
     m_uploadStream->ResetAllocations();
+    m_pDescriptorPool->Reset();
 }

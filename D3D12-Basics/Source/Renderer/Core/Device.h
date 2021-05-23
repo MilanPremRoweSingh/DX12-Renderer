@@ -8,6 +8,8 @@ class Device
 {
 public:
 
+    Device();
+
     void CreateCommandQueue(
         const D3D12_COMMAND_QUEUE_DESC& desc,
         ID3D12CommandQueue** ppCmdQueue);
@@ -80,7 +82,8 @@ public:
         D3D12_CLEAR_VALUE* clearValue,
         ID3D12Resource** ppTexture);
 
-    Device();
+    ID3D12Device* GetNativeDevice(
+        void);
 
 private:
     ComPtr<ID3D12Device> m_device;

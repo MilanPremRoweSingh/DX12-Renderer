@@ -45,10 +45,10 @@ void Device::CreateDescriptorHeap(
 void Device::CreateDescriptorHeap(
     const D3D12_DESCRIPTOR_HEAP_DESC& desc,
     ID3D12DescriptorHeap** ppDescriptorHeap,
-    uint32& descriptorSize)
+    uint32& descriptorSizeOut)
 {
     CreateDescriptorHeap(desc, ppDescriptorHeap);
-    descriptorSize = m_device->GetDescriptorHandleIncrementSize(desc.Type);
+    descriptorSizeOut = m_device->GetDescriptorHandleIncrementSize(desc.Type);
 }
 
 void Device::CreateRenderTargetView(
@@ -176,3 +176,9 @@ void Device::CreateTexture2D(
 #endif
 }
 
+
+ID3D12Device* Device::GetNativeDevice(
+    void)
+{
+    return m_device.Get();
+}
