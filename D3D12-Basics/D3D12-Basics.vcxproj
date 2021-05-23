@@ -172,8 +172,10 @@
     <ClCompile Include="Source\Renderer\Renderer.cpp" />
     <ClCompile Include="Source\Shell.cpp" />
     <ClCompile Include="Source\Renderer\Core\UploadStream.cpp" />
+    <ClCompile Include="Source\Renderer\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\Header.h" />
     <ClInclude Include="Source\Renderer\Core\DescriptorPool.h" />
     <ClInclude Include="External\stb_image.h" />
     <ClInclude Include="Shaders\ConstantBuffers.h" />
@@ -181,6 +183,7 @@
     <ClInclude Include="Source\Generic\SimpleDequeue.h" />
     <ClInclude Include="Source\Generic\IDAllocator.h" />
     <ClInclude Include="Source\Material.h" />
+    <ClInclude Include="Source\Renderer\Texture.h" />
     <ClInclude Include="Source\Renderer\VertexFormats.h" />
     <ClInclude Include="Source\Scene.h" />
     <ClInclude Include="Source\Renderer\ConstantBuffers.h" />

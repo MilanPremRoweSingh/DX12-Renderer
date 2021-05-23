@@ -10,6 +10,7 @@ struct Vertex;
 
 enum VertexBufferID;
 enum IndexBufferID;
+enum TextureID;
 
 #define NUM_SWAP_CHAIN_BUFFERS 2
 // For now assume all shaders are in the same file
@@ -51,6 +52,15 @@ public:
 
     void IndexBufferDestroy(
         IndexBufferID ibid);
+
+    TextureID TextureCreate(
+        int32 width, 
+        int32 height,
+        int32 numChannels,
+        void* pData);
+
+    void TextureDestroy(
+        TextureID tid);
 
 private:
 

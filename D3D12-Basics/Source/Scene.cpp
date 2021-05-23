@@ -4,13 +4,11 @@
 
 #include "Renderer/VertexFormats.h"
 #include "Renderer/Renderable.h"
+#include "Renderer/Texture.h"
 
 #include <assimp/postprocess.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
-
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 
 #define TEXTURE_DIR_PATH "../Data/Textures/"
 
@@ -151,8 +149,8 @@ Scene* Scene::Load(
                 pAssimpMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &assimpTexName);
                 assimpTexPath.Append(assimpTexName.C_Str());
 
-                int32 width, height, numChannels;
-                unsigned char* pTexData = stbi_load(assimpTexPath.C_Str(), &width, &height, &numChannels, 0);
+                Texture* pTexture = Texture::CreateFromFile(assimpTexPath.C_Str());
+                material.diffuseTexture = pTexture;
             }
         }
 

@@ -5,6 +5,7 @@
 
 #include "Renderer/ConstantBuffers.h"
 #include "Renderer/Renderable.h"
+#include "Renderer/Texture.h"
 #include "Renderer/Core/D3D12Core.h"
 
 size_t g_cbSizes[CBIDCount] = {
@@ -117,6 +118,21 @@ void Renderer::IndexBufferDestroy(IndexBufferID ibid)
     m_core->IndexBufferDestroy(ibid);
 }
 
+TextureID Renderer::TextureCreate(
+    int32 width,
+    int32 height,
+    int32 numChannels,
+    void* pData)
+{
+    return m_core->TextureCreate(width, height, numChannels, pData);
+}
+
+void Renderer::TextureDestroy(
+    TextureID tid)
+{
+    m_core->TextureDestroy(tid);
+}
+
 void Renderer::Render()
 {
     if (!m_context->pCamera)
@@ -153,9 +169,16 @@ void Renderer::Render()
             float specularHardness = 10.0f;
             ConstantDataSetEntry(CBCOMMON_ENTRY(specularHardness), &specularHardness);
 
-            ConstantDataSetEntry(CBCOMMON_ENTRY(diffuse), &pRenderable->material.diffuse);
+            const Material& material = pRenderable->material;
+
+            ConstantDataSetEntry(CBCOMMON_ENTRY(diffuse), &material.diffuse);
             
             ConstantDataFlush();
+
+            if (material.diffuseTexture)
+            {
+                m_core->TextureBindForDraw(material.diffuseTexture->GetID(), 0);
+            }
 
             m_core->Draw(pRenderable->vbid, pRenderable->ibid);
         }

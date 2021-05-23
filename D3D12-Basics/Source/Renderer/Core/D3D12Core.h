@@ -27,6 +27,11 @@ enum IndexBufferID : int32
     IndexBufferIDInvalid = -1
 };
 
+enum TextureID : int32
+{
+    TextureIDInvalid = -1
+};
+
 // Structs /////////////////////////////////////////////////////////////////////////////////
 
 struct IndexBuffer
@@ -43,11 +48,10 @@ struct VertexBuffer
     size_t vertexCount;
 };
 
-struct ConstantBuffer
+struct NativeTexture
 {
-    ComPtr<ID3D12Resource> buffer;
-    D3D12_DESCRIPTOR_ADDRESS view;
-    size_t size;
+    ID3D12Resource* pBuffer = nullptr;
+    D3D12_CPU_DESCRIPTOR_HANDLE view;
 };
 
 // Classes /////////////////////////////////////////////////////////////////////////////////
@@ -72,17 +76,6 @@ public:
         void* initialData,
         ID3D12Resource** ppBuffer);
 
-    void Texture2DCreate(
-        const D3D12_HEAP_PROPERTIES& heapProps,
-        uint32 width,
-        uint32 height,
-        uint16 mipLevels,
-        DXGI_FORMAT format,
-        D3D12_HEAP_FLAGS heapFlags,
-        D3D12_RESOURCE_STATES initialState,
-        void* initialData,
-        ID3D12Resource** ppTexture);
-
     VertexBufferID VertexBufferCreate(
         size_t vertexCount,
         Vertex* pVertexData);
@@ -96,6 +89,19 @@ public:
 
     void IndexBufferDestroy(
         IndexBufferID ibid);
+
+    TextureID TextureCreate(
+        int32 width,
+        int32 height,
+        int32 numChannels,
+        void* pTextureData);
+
+    void TextureDestroy(
+       TextureID ibid);
+
+    void TextureBindForDraw(
+        TextureID tid,
+        int32 slot);
 
     void ConstantBufferSetData(
         ConstantBufferID id,
@@ -127,15 +133,25 @@ public:
 
 private:
 
-    D3D12_DESCRIPTOR_ADDRESS AllocateGeneralDescriptor(
+    D3D12_CPU_DESCRIPTOR_HANDLE AllocateCPUGeneralDescriptor(
         void);
+
+    void Texture2DCreateInternal(
+        const D3D12_HEAP_PROPERTIES& heapProps,
+        uint32 width,
+        uint32 height,
+        uint16 mipLevels,
+        DXGI_FORMAT format,
+        D3D12_HEAP_FLAGS heapFlags,
+        D3D12_RESOURCE_STATES initialState,
+        void* initialData,
+        ID3D12Resource** ppTexture);
 
      void CreateRootSignature(
          void);
 
      void ConstantBuffersInit(
         void);
-
 
      D3D12_VIEWPORT m_viewport;
      D3D12_RECT  m_scissorRect;
@@ -163,7 +179,7 @@ private:
      // 'General' i.e. CBV + SRV + UAV
      ComPtr<ID3D12DescriptorHeap> m_generalDescriptorHeap;
      uint32 m_generalDescriptorSize;
-     D3D12_DESCRIPTOR_ADDRESS m_nextGeneralDescriptor;
+     D3D12_CPU_DESCRIPTOR_HANDLE m_nextGeneralDescriptor;
 
      DescriptorPool* m_pDescriptorPool;
 
@@ -173,11 +189,15 @@ private:
 
      UploadStream* m_uploadStream;
 
+     // TODO : Don't use unordered map because its bad 
      IDAllocator<VertexBufferID> m_vbidAllocator = IDAllocator<VertexBufferID>(VertexBufferID(0));
      std::unordered_map<VertexBufferID, VertexBuffer> m_vertexBuffers;
 
      IDAllocator<IndexBufferID> m_ibidAllocator = IDAllocator<IndexBufferID>(IndexBufferID(0));
      std::unordered_map<IndexBufferID, IndexBuffer> m_indexBuffers;
+
+     IDAllocator<TextureID> m_tidAllocator = IDAllocator<TextureID>(TextureID(0));
+     std::unordered_map<TextureID, NativeTexture> m_textures;
 
      uint32 m_frameIndex = 0;
      HANDLE m_fenceEvent;

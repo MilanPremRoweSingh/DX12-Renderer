@@ -28,12 +28,13 @@ public:
         }
     };
     
-    UploadStream(Device* device, size_t pageSize = _2MB);
+    UploadStream(Device* device, size_t pageSize = _32MB);
 
     Allocation Allocate(size_t size);
     Allocation AllocateAligned(size_t size, size_t align);
 
     void ResetAllocations();
+
 
 private:
     struct Page

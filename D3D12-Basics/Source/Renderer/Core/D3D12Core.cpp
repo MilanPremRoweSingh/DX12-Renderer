@@ -21,7 +21,7 @@
 
 #define SRV_DESCRIPTOR_POOL_SIZE 5000
 #define SRV_DESCRIPTOR_TABLE_MAX_SLOTS 16
-
+#define SRV_MAX_ALLOCATED 4096
 
 enum RootSignatureSlot : int32
 {
@@ -105,6 +105,7 @@ D3D12Core::D3D12Core()
 
 D3D12Core::~D3D12Core()
 {
+    delete m_pDescriptorPool;
     delete m_uploadStream;
     delete m_device;
 }
@@ -199,14 +200,14 @@ void D3D12Core::InitialisePipeline()
         m_device->CreateDepthStencilView(m_depthStencil.Get(), &depthStencilDesc, handle);
     }
 
-    // Create General descriptor heap
+    // Create CPU General descriptor heap 
     {
         D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-        desc.NumDescriptors = 2;
+        desc.NumDescriptors = SRV_MAX_ALLOCATED;
         desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
         desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
         m_device->CreateDescriptorHeap(desc, &m_generalDescriptorHeap, m_generalDescriptorSize);
-        m_nextGeneralDescriptor = { m_generalDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),  m_generalDescriptorHeap->GetGPUDescriptorHandleForHeapStart() };
+        m_nextGeneralDescriptor = m_generalDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
     }
 
     ConstantBuffersInit();
@@ -395,18 +396,6 @@ void D3D12Core::InitialAssetsLoad()
     {
         m_device->CreateGraphicsCommandList(m_cmdAllocator.Get(), m_pipelineState.Get(), &m_cmdList);
     }
-
-    // Create dumb texture
-    {
-        D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-        int32 data = 0xFFFFFFFF;
-        Texture2DCreate(heapProps, 1, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &data, &m_texture);
-
-        m_device->CreateShaderResourceView(m_texture.Get(), NULL, AllocateGeneralDescriptor().cpuHandle);
-    }
 }
 
 void D3D12Core::BufferCreate(
@@ -443,7 +432,7 @@ void D3D12Core::BufferCreate(
     CommandListExecute();
 }
 
-void D3D12Core::Texture2DCreate(
+void D3D12Core::Texture2DCreateInternal(
     const D3D12_HEAP_PROPERTIES& heapProps,
     uint32 width,
     uint32 height,
@@ -458,14 +447,14 @@ void D3D12Core::Texture2DCreate(
 
     m_device->CreateTexture2D(heapProps, width, height, mipLevels, format, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, nullptr, ppTexture);
 
-    uint32 rowPitch = width * GetDXGIFormatSize(format);
+    uint32 rowPitch = Utils::AlignUp(width * GetDXGIFormatSize(format), (uint32)D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
     size_t slicePitch = height * rowPitch;
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
     footprint.Footprint.Width = width;
     footprint.Footprint.Height = height;
     footprint.Footprint.Depth = 1;
     footprint.Footprint.Format = format;
-    footprint.Footprint.RowPitch = Utils::AlignUp(rowPitch, (uint32)D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+    footprint.Footprint.RowPitch = rowPitch;
 
     UploadStream::Allocation uploadBufferAlloc = m_uploadStream->AllocateAligned(slicePitch, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
     footprint.Offset = uploadBufferAlloc.bufferOffset;
@@ -578,15 +567,95 @@ void D3D12Core::IndexBufferDestroy(
     m_ibidAllocator.FreeID(ibid);
 }
 
-D3D12_DESCRIPTOR_ADDRESS D3D12Core::AllocateGeneralDescriptor(
+D3D12_CPU_DESCRIPTOR_HANDLE D3D12Core::AllocateCPUGeneralDescriptor(
     void)
 {
-    D3D12_DESCRIPTOR_ADDRESS curr = m_nextGeneralDescriptor;
-    m_nextGeneralDescriptor.cpuHandle.ptr += m_generalDescriptorSize;
-    m_nextGeneralDescriptor.gpuHandle.ptr += m_generalDescriptorSize;
+    D3D12_CPU_DESCRIPTOR_HANDLE curr = m_nextGeneralDescriptor;
+    m_nextGeneralDescriptor.ptr += m_generalDescriptorSize;
     return curr;
 }
 
+
+// Hard code format from number of channels for now
+DXGI_FORMAT sSelectTextureFormat(
+    int32 numChannels)
+{
+    DXGI_FORMAT format = DXGI_FORMAT_R16G16B16A16_UNORM;
+    switch (numChannels)
+    {
+        case 1:
+            format = DXGI_FORMAT_R8_UNORM;
+            break;
+
+        case 2:
+            format = DXGI_FORMAT_R8G8_UNORM;
+            break;
+
+        case 4:
+            format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            break;
+
+        default:
+            ASSERT(false);
+    }
+    return format;
+}
+
+TextureID D3D12Core::TextureCreate(
+    int32 width, 
+    int32 height, 
+    int32 numChannels, 
+    void* pTextureData)
+{
+    NativeTexture nativeTexture;
+
+    TextureID id = m_tidAllocator.AllocID();
+
+    // If a texture with this ID already exists, it's been 'freed' already exists, we can just reuse the descriptor
+    if (m_textures.find(id) != m_textures.end())
+    {
+        nativeTexture = m_textures[id];
+    }
+    else
+    {
+        nativeTexture.view = AllocateCPUGeneralDescriptor();
+    }
+    ASSERT(nativeTexture.pBuffer == nullptr);
+
+
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+    heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+    Texture2DCreateInternal(heapProps, width, height, 1, sSelectTextureFormat(numChannels), D3D12_HEAP_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, pTextureData, &nativeTexture.pBuffer);
+
+    m_device->CreateShaderResourceView(nativeTexture.pBuffer, NULL, nativeTexture.view);
+
+    m_textures[id] = nativeTexture;
+
+    return id;
+}
+
+void D3D12Core::TextureDestroy(
+    TextureID tid)
+{
+    // Intentionally do not remove the entry from the list of textures, we will reuse it (and the descriptor) for a texture allocated in the future
+    NativeTexture& nativeTexture = m_textures[tid];
+    nativeTexture.pBuffer->Release();
+    nativeTexture.pBuffer = nullptr;
+    m_tidAllocator.FreeID(tid);
+}
+
+void D3D12Core::TextureBindForDraw(
+    TextureID tid,
+    int32 slot)
+{
+    const NativeTexture& nativeTexture = m_textures[tid];
+    ASSERT(nativeTexture.pBuffer);
+
+    m_pDescriptorPool->StageDescriptor(slot, nativeTexture.view);
+}
 
 void D3D12Core::CommandListExecute()
 {
@@ -671,7 +740,6 @@ void D3D12Core::Draw(
     m_pDescriptorPool->StageDescriptor(0, m_generalDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
     m_cmdList->SetGraphicsRootDescriptorTable(RSS_SRVTABLE, m_pDescriptorPool->CommitStagedDescriptors());
-
 
     for (int32 i = CBIDStart; i < CBIDDynamicCount; i++)
     {
