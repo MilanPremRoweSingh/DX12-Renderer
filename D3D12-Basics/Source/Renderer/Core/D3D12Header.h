@@ -6,22 +6,21 @@ using Microsoft::WRL::ComPtr;
 
 #define ASSERT_SUCCEEDED(x) {HRESULT result = x; ASSERT(SUCCEEDED(result));} 
 
-inline uint32 GetDXGIFormatSize(DXGI_FORMAT dxgiFormat)
+inline uint32 GetDXGIFormatBPP(DXGI_FORMAT dxgiFormat)
 {
-    assert(dxgiFormat != DXGI_FORMAT_R1_UNORM);
-    switch (static_cast<int>(dxgiFormat))
+    switch (dxgiFormat)
     {
         case DXGI_FORMAT_R32G32B32A32_TYPELESS:
         case DXGI_FORMAT_R32G32B32A32_FLOAT:
         case DXGI_FORMAT_R32G32B32A32_UINT:
         case DXGI_FORMAT_R32G32B32A32_SINT:
-            return 32;
+            return 128;
 
         case DXGI_FORMAT_R32G32B32_TYPELESS:
         case DXGI_FORMAT_R32G32B32_FLOAT:
         case DXGI_FORMAT_R32G32B32_UINT:
         case DXGI_FORMAT_R32G32B32_SINT:
-            return 24;
+            return 96;
 
         case DXGI_FORMAT_R16G16B16A16_TYPELESS:
         case DXGI_FORMAT_R16G16B16A16_FLOAT:
@@ -40,7 +39,7 @@ inline uint32 GetDXGIFormatSize(DXGI_FORMAT dxgiFormat)
         case DXGI_FORMAT_Y416:
         case DXGI_FORMAT_Y210:
         case DXGI_FORMAT_Y216:
-            return 16;
+            return 64;
 
         case DXGI_FORMAT_R10G10B10A2_TYPELESS:
         case DXGI_FORMAT_R10G10B10A2_UNORM:
@@ -80,11 +79,11 @@ inline uint32 GetDXGIFormatSize(DXGI_FORMAT dxgiFormat)
         case DXGI_FORMAT_AYUV:
         case DXGI_FORMAT_Y410:
         case DXGI_FORMAT_YUY2:
-            return 8;
+            return 32;
 
         case DXGI_FORMAT_P010:
         case DXGI_FORMAT_P016:
-            return 6;
+            return 24;
 
         case DXGI_FORMAT_R8G8_TYPELESS:
         case DXGI_FORMAT_R8G8_UNORM:
@@ -102,12 +101,12 @@ inline uint32 GetDXGIFormatSize(DXGI_FORMAT dxgiFormat)
         case DXGI_FORMAT_B5G5R5A1_UNORM:
         case DXGI_FORMAT_A8P8:
         case DXGI_FORMAT_B4G4R4A4_UNORM:
-            return 4;
+            return 16;
 
         case DXGI_FORMAT_NV12:
         case DXGI_FORMAT_420_OPAQUE:
         case DXGI_FORMAT_NV11:
-            return 3;
+            return 12;
 
         case DXGI_FORMAT_R8_TYPELESS:
         case DXGI_FORMAT_R8_UNORM:
@@ -118,7 +117,10 @@ inline uint32 GetDXGIFormatSize(DXGI_FORMAT dxgiFormat)
         case DXGI_FORMAT_AI44:
         case DXGI_FORMAT_IA44:
         case DXGI_FORMAT_P8:
-            return 2;
+            return 8;
+
+        case DXGI_FORMAT_R1_UNORM:
+            return 1;
 
         case DXGI_FORMAT_BC1_TYPELESS:
         case DXGI_FORMAT_BC1_UNORM:
@@ -126,7 +128,7 @@ inline uint32 GetDXGIFormatSize(DXGI_FORMAT dxgiFormat)
         case DXGI_FORMAT_BC4_TYPELESS:
         case DXGI_FORMAT_BC4_UNORM:
         case DXGI_FORMAT_BC4_SNORM:
-            return 1;
+            return 4;
 
         case DXGI_FORMAT_BC2_TYPELESS:
         case DXGI_FORMAT_BC2_UNORM:
@@ -143,7 +145,7 @@ inline uint32 GetDXGIFormatSize(DXGI_FORMAT dxgiFormat)
         case DXGI_FORMAT_BC7_TYPELESS:
         case DXGI_FORMAT_BC7_UNORM:
         case DXGI_FORMAT_BC7_UNORM_SRGB:
-            return 2;
+            return 8;
 
         default:
             return 0;
