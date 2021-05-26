@@ -25,11 +25,27 @@ Scene::Scene()
 
 Scene::~Scene()
 {
-    for (auto it = pRenderables.begin(); it != pRenderables.end(); it++)
+    for (auto it = m_pRenderables.begin(); it != m_pRenderables.end(); it++)
     {
         delete *it;
     }
+
+    for (auto it = m_textures.begin(); it != m_textures.end(); it++)
+    {
+        delete it->second;
+    }
 }
+
+Texture* Scene::GetOrCreateTextureFromPath(
+    const std::string& filePath)
+{
+    if (m_textures.find(filePath) == m_textures.end())
+    {
+        m_textures[filePath] = Texture::CreateFromFile(filePath.c_str());
+    }
+    return m_textures[filePath];
+}
+
 
 Scene* Scene::Load(
     const char* fileName)
@@ -45,7 +61,7 @@ Scene* Scene::Load(
 
     Scene* pScene = new Scene();
 
-    pScene->pRenderables.reserve(pAssimpScene->mNumMeshes);
+    pScene->m_pRenderables.reserve(pAssimpScene->mNumMeshes);
 
     for (uint32 idxMesh = 0; idxMesh < pAssimpScene->mNumMeshes; idxMesh++)
     {
@@ -142,22 +158,20 @@ Scene* Scene::Load(
 
             if (pAssimpMaterial->GetTextureCount(aiTextureType_DIFFUSE))
             {
-                aiString assimpTexPath;
-                assimpTexPath.Set(TEXTURE_DIR_PATH);
-
                 aiString assimpTexName;
                 pAssimpMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &assimpTexName);
-                assimpTexPath.Append(assimpTexName.C_Str());
 
-                Texture* pTexture = Texture::CreateFromFile(assimpTexPath.C_Str());
-                material.diffuseTexture = pTexture;
+                std::string texPath = TEXTURE_DIR_PATH;
+                texPath.append(assimpTexName.C_Str());
+
+                material.diffuseTexture = pScene->GetOrCreateTextureFromPath(texPath.c_str());
             }
         }
 
         Renderable* pRenderable = new Renderable(vbid, ibid, material);
         ASSERT(pRenderable);
 
-        pScene->pRenderables.push_back(pRenderable);
+        pScene->m_pRenderables.push_back(pRenderable);
     }
 
     return pScene;

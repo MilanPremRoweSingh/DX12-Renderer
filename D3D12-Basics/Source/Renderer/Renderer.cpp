@@ -159,9 +159,9 @@ void Renderer::Render()
 
     if (m_context->pScene)
     {
-        for (int32 i = 0; i < m_context->pScene->pRenderables.size(); i++)
+        for (int32 i = 0; i < m_context->pScene->m_pRenderables.size(); i++)
         {
-            const Renderable* pRenderable = m_context->pScene->pRenderables[i];
+            const Renderable* pRenderable = m_context->pScene->m_pRenderables[i];
 
             float specular = 0.5f;
             ConstantDataSetEntry(CBCOMMON_ENTRY(specular), &specular);
