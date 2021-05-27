@@ -80,6 +80,12 @@ D3D12Core::D3D12Core()
             debugController->Release();
         }
     }
+    
+    for (int32 i = 0; i < NUM_SWAP_CHAIN_BUFFERS; i++)
+    {
+        m_frameFenceValues[i] = 0;
+    }
+    m_fenceValue = 0;
 
     m_device = new Device();
 
@@ -212,7 +218,10 @@ void D3D12Core::InitialisePipeline()
 
     ConstantBuffersInit();
 
-    m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, &m_cmdAllocator);
+    for (int32 i = 0; i < NUM_SWAP_CHAIN_BUFFERS; i++)
+    {
+        m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, &m_cmdAllocators[i]);
+    }
     
     m_device->CreateFence(0, &m_fence);
 }
@@ -392,9 +401,10 @@ void D3D12Core::InitialAssetsLoad()
         m_device->CreateGraphicsPipelineState(desc, &m_pipelineState);
     }
 
-    // Create Command List
+    // Create Command Lists
+    for (int32 i = 0; i < NUM_SWAP_CHAIN_BUFFERS; i++)
     {
-        m_device->CreateGraphicsCommandList(m_cmdAllocator.Get(), m_pipelineState.Get(), &m_cmdList);
+        m_device->CreateGraphicsCommandList(m_cmdAllocators[i].Get(), m_pipelineState.Get(), &m_cmdLists[i]);
     }
 }
 
@@ -412,7 +422,7 @@ void D3D12Core::BufferCreate(
 
     UploadStream::Allocation uploadBufferAlloc = m_uploadStream->Allocate(size);
     memcpy(uploadBufferAlloc.cpuAddr, initialData, size);
-    m_cmdList->CopyBufferRegion(*ppBuffer, 0, uploadBufferAlloc.buffer, uploadBufferAlloc.bufferOffset, size);
+    GetCurrentCmdList()->CopyBufferRegion(*ppBuffer, 0, uploadBufferAlloc.buffer, uploadBufferAlloc.bufferOffset, size);
     if (initialState != D3D12_RESOURCE_STATE_COPY_DEST)
     {
         D3D12_RESOURCE_TRANSITION_BARRIER transition;
@@ -426,7 +436,7 @@ void D3D12Core::BufferCreate(
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
         barrier.Transition = transition;
 
-        m_cmdList->ResourceBarrier(1, &barrier);
+        GetCurrentCmdList()->ResourceBarrier(1, &barrier);
     }
 
     CommandListExecute();
@@ -475,7 +485,7 @@ void D3D12Core::Texture2DCreateInternal(
     dst.pResource = *ppTexture;
     dst.SubresourceIndex = 0;
 
-    m_cmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+    GetCurrentCmdList()->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 
     if (initialState != D3D12_RESOURCE_STATE_COPY_DEST)
     {
@@ -490,7 +500,7 @@ void D3D12Core::Texture2DCreateInternal(
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
         barrier.Transition = transition;
 
-        m_cmdList->ResourceBarrier(1, &barrier);
+        GetCurrentCmdList()->ResourceBarrier(1, &barrier);
     }
 
     CommandListExecute();
@@ -659,8 +669,8 @@ void D3D12Core::TextureBindForDraw(
 
 void D3D12Core::CommandListExecute()
 {
-    ASSERT_SUCCEEDED(m_cmdList->Close());
-    ID3D12CommandList* cmdLists[] = { m_cmdList.Get() };
+    ASSERT_SUCCEEDED(GetCurrentCmdList()->Close());
+    ID3D12CommandList* cmdLists[] = { GetCurrentCmdList() };
     m_cmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 }
 
@@ -668,8 +678,9 @@ void D3D12Core::CommandListBegin()
 {
     // BAaaaaAAaad
     WaitForGPU();
-    ASSERT_SUCCEEDED(m_cmdAllocator->Reset());
-    ASSERT_SUCCEEDED(m_cmdList->Reset(m_cmdAllocator.Get(), m_pipelineState.Get()));
+    ID3D12CommandAllocator* currCmdAllocator = m_cmdAllocators[m_frameIndex].Get();
+    ASSERT_SUCCEEDED(currCmdAllocator->Reset());
+    ASSERT_SUCCEEDED(GetCurrentCmdList()->Reset(currCmdAllocator, m_pipelineState.Get()));
 }
 
 void D3D12Core::WaitForGPU()
@@ -689,17 +700,17 @@ void D3D12Core::Begin(
 {
     CommandListBegin();
 
-    m_cmdList->SetGraphicsRootSignature(m_defaultRootSignature.Get());
+    GetCurrentCmdList()->SetGraphicsRootSignature(m_defaultRootSignature.Get());
 
     uint32 rootParamIdx = 0;
-    m_cmdList->SetGraphicsRootConstantBufferView(RSS_CBSTART + CBIDStatic, m_staticConstantBuffer->GetGPUVirtualAddress());
+    GetCurrentCmdList()->SetGraphicsRootConstantBufferView(RSS_CBSTART + CBIDStatic, m_staticConstantBuffer->GetGPUVirtualAddress());
 
 
     ID3D12DescriptorHeap* heaps[] = { m_pDescriptorPool->GetGPUDescriptorHeap() };
-    m_cmdList->SetDescriptorHeaps(1, heaps);
+    GetCurrentCmdList()->SetDescriptorHeaps(1, heaps);
 
-    m_cmdList->RSSetViewports(1, &m_viewport);
-    m_cmdList->RSSetScissorRects(1, &m_scissorRect);
+    GetCurrentCmdList()->RSSetViewports(1, &m_viewport);
+    GetCurrentCmdList()->RSSetScissorRects(1, &m_scissorRect);
 
     // Transition back buffer to rt
     {
@@ -714,7 +725,7 @@ void D3D12Core::Begin(
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
         barrier.Transition = transition;
 
-        m_cmdList->ResourceBarrier(1, &barrier);
+        GetCurrentCmdList()->ResourceBarrier(1, &barrier);
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
@@ -722,13 +733,13 @@ void D3D12Core::Begin(
 
     D3D12_CPU_DESCRIPTOR_HANDLE dsvHadle = m_dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 
-    m_cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHadle);
+    GetCurrentCmdList()->OMSetRenderTargets(1, &rtvHandle, false, &dsvHadle);
 
     {
         const float clearColor[] = { 86.0f / 255.0f, 0.0f / 255.0f, 94.0f / 255.0f, 1.0f };
-        m_cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-        m_cmdList->ClearDepthStencilView(dsvHadle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-        m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        GetCurrentCmdList()->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+        GetCurrentCmdList()->ClearDepthStencilView(dsvHadle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+        GetCurrentCmdList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     }
 }
 
@@ -736,17 +747,17 @@ void D3D12Core::Draw(
     VertexBufferID vbid,
     IndexBufferID ibid)
 {
-    m_cmdList->SetGraphicsRootDescriptorTable(RSS_SRVTABLE, m_pDescriptorPool->CommitStagedDescriptors());
+    GetCurrentCmdList()->SetGraphicsRootDescriptorTable(RSS_SRVTABLE, m_pDescriptorPool->CommitStagedDescriptors());
 
     for (int32 i = CBIDStart; i < CBIDDynamicCount; i++)
     {
-        m_cmdList->SetGraphicsRootConstantBufferView(RSS_CBSTART + i, m_dynamicConstantBufferAllocations[i].GetGPUVirtualAddress());
+        GetCurrentCmdList()->SetGraphicsRootConstantBufferView(RSS_CBSTART + i, m_dynamicConstantBufferAllocations[i].GetGPUVirtualAddress());
     }
 
     // Draw
-    m_cmdList->IASetVertexBuffers(0, 1, &m_vertexBuffers[vbid].view);
-    m_cmdList->IASetIndexBuffer(&m_indexBuffers[ibid].view);
-    m_cmdList->DrawIndexedInstanced((uint32)m_indexBuffers[ibid].indexCount, 1, 0, 0, 0);
+    GetCurrentCmdList()->IASetVertexBuffers(0, 1, &m_vertexBuffers[vbid].view);
+    GetCurrentCmdList()->IASetIndexBuffer(&m_indexBuffers[ibid].view);
+    GetCurrentCmdList()->DrawIndexedInstanced((uint32)m_indexBuffers[ibid].indexCount, 1, 0, 0, 0);
 }
 
 void D3D12Core::End()
@@ -763,7 +774,7 @@ void D3D12Core::End()
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
         barrier.Transition = transition;
 
-        m_cmdList->ResourceBarrier(1, &barrier);
+        GetCurrentCmdList()->ResourceBarrier(1, &barrier);
     }
 
     CommandListExecute();
@@ -775,7 +786,16 @@ void D3D12Core::Present()
 
     WaitForGPU();
 
+    m_frameFenceValues[m_frameIndex] = ++m_fenceValue;
+    ASSERT_SUCCEEDED(m_cmdQueue->Signal(m_fence.Get(), m_frameFenceValues[m_frameIndex]));
+
     m_frameIndex = m_swapChain3->GetCurrentBackBufferIndex();
+
+    if (m_fence->GetCompletedValue() < m_frameFenceValues[m_frameIndex])
+    {
+        ASSERT_SUCCEEDED(m_fence->SetEventOnCompletion(m_frameFenceValues[m_frameIndex], m_fenceEvent));
+        WaitForSingleObject(m_fenceEvent, INFINITE);
+    }
 
     m_uploadStream->ResetAllocations();
     m_pDescriptorPool->Reset();
