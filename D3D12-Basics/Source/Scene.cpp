@@ -150,7 +150,10 @@ Scene* Scene::Load(
         Material material;
         if (pAssimpScene->HasMaterials())
         {
-            const aiMaterial* pAssimpMaterial = pAssimpScene->mMaterials[assimpMesh.mMaterialIndex];
+            const aiMaterial* pAssimpMaterial = pAssimpScene->mMaterials[assimpMesh.mMaterialIndex]; 
+            aiString aiMaterialName;
+            pAssimpMaterial->Get(AI_MATKEY_NAME, aiMaterialName);
+            strcpy_s(material.name, aiMaterialName.C_Str());
 
             aiColor3D color(0.f, 0.f, 0.f);
             pAssimpMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color);

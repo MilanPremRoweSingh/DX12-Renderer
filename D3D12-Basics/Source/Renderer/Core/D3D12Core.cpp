@@ -736,9 +736,6 @@ void D3D12Core::Draw(
     VertexBufferID vbid,
     IndexBufferID ibid)
 {
-    // TODO : Separate texture binding out and expose it to the Renderer, then just commit staged descriptors here
-    m_pDescriptorPool->StageDescriptor(0, m_generalDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
-
     m_cmdList->SetGraphicsRootDescriptorTable(RSS_SRVTABLE, m_pDescriptorPool->CommitStagedDescriptors());
 
     for (int32 i = CBIDStart; i < CBIDDynamicCount; i++)
