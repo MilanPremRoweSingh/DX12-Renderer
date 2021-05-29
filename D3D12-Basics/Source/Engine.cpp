@@ -27,7 +27,7 @@ void EngineInitialise()
     startTime = HighResClock::now();
     currentFrameTime = startTime;
 
-    s_pCurrScene = Scene::Load("../Data/Models/CursedCornell.obj");
+    EngineAssetsLoad();
 
     Vector3 eyePos(0, 0, -10);
     Vector3 targetPos;
@@ -44,6 +44,13 @@ void EngineDispose()
 
     delete s_pCurrScene;
     delete g_pRenderer;
+}
+
+void EngineAssetsLoad()
+{
+    g_pRenderer->UploadBegin();
+    s_pCurrScene = Scene::Load("../Data/Models/CursedCornell.obj");
+    g_pRenderer->UploadEnd();
 }
 
 void EngineLog(const char* message)

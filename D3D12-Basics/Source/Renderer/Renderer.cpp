@@ -194,3 +194,17 @@ void Renderer::FlushGPU()
 {
     m_core->WaitForGPU();
 }
+
+void Renderer::UploadBegin(
+    void)
+{
+    m_core->Begin();
+}
+
+void Renderer::UploadEnd(
+    void)
+{
+    m_core->End();
+
+    m_core->AdvanceFrame();
+}

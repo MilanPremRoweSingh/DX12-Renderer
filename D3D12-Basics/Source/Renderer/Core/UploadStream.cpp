@@ -23,63 +23,84 @@ UploadStream::Page& UploadStream::AllocatePage()
     return m_pages.back();
 }
 
-UploadStream::Allocation UploadStream::Allocate(size_t size)
+UploadStream::Allocation UploadStream::Allocate(size_t size, uint64 syncPoint)
 {
-    return AllocateAligned(size, 1);
+    return AllocateAligned(size, 1, syncPoint);
 }
 
-UploadStream::Allocation UploadStream::AllocateAligned(size_t size, size_t align)
+UploadStream::Allocation UploadStream::AllocateAligned(size_t size, size_t align, uint64 syncPoint)
 {
     Page& page = m_pages.back();
     Allocation alloc;
-    if (!page.Allocate(size, align, alloc))
+    if (!page.Allocate(size, align, syncPoint, alloc))
     {
         page = AllocatePage();
-        assert(page.Allocate(size, align, alloc));
+        assert(page.Allocate(size, align, syncPoint, alloc));
     }
     return alloc;
 }
 
-void UploadStream::ResetAllocations()
+void UploadStream::ResetAllocations(uint64 syncPoint)
 {
-    for (Page& page : m_pages)
+    // Find the last page with page.syncPoint <= syncPoint, reset begin -> firstNotReset - 1 and stick them at the end of the list
+    auto firstNotReset = m_pages.begin();
+    for (firstNotReset; firstNotReset != m_pages.end(); firstNotReset++)
     {
-        page.Reset();
+        if (firstNotReset->GetSyncPoint() > syncPoint || firstNotReset->IsEmpty())
+        {
+            break;
+        }
+        else
+        {
+            firstNotReset->Reset();
+        }
     }
+
+    if (firstNotReset == m_pages.begin())
+    {
+        // First element has a higher syncPoint, syncPoint is monotonically increasing so no later elements are resetable either
+        return;
+    }
+
+    m_pages.splice(m_pages.end(), m_pages, m_pages.begin(), firstNotReset);
 }
 
 UploadStream::Page::Page(size_t _pageSize, ID3D12Resource* _pageBuffer)
 {
-    pageSize = _pageSize;
-    offset = 0;
-    pageBuffer = ComPtr<ID3D12Resource>(_pageBuffer);
+    m_pageSize = _pageSize;
+    m_offset = 0;
+    m_syncPoint = 0;
+    m_pageBuffer = ComPtr<ID3D12Resource>(_pageBuffer);
 
     D3D12_RANGE range = {0,0};
-    pageBuffer->Map(0, &range, &cpuAddr);
+    m_pageBuffer->Map(0, &range, &m_cpuAddr);
+
 }
 
 UploadStream::Page::~Page()
 {
-    pageBuffer->Unmap(0, nullptr);
+    m_pageBuffer->Unmap(0, nullptr);
 }
 
 void UploadStream::Page::Reset()
 {
-    offset = 0;
+    m_offset = 0;
+    m_syncPoint = 0;
 }
 
-bool UploadStream::Page::Allocate(size_t size, size_t align, Allocation& allocOut)
+bool UploadStream::Page::Allocate(size_t size, size_t align, uint64 syncPoint, Allocation& allocOut)
 {
-    size_t alignedOffset = Utils::AlignUp(offset, align);
+    size_t alignedOffset = Utils::AlignUp(m_offset, align);
     size_t nextOffset = alignedOffset + size;
-    if (nextOffset > pageSize)
+    if (nextOffset > m_pageSize)
     {
         return false;
     }
-    allocOut.buffer = pageBuffer.Get();
-    allocOut.cpuAddr = (void*)((INT8*)cpuAddr + alignedOffset);
+    allocOut.buffer = m_pageBuffer.Get();
+    allocOut.cpuAddr = (void*)((INT8*)m_cpuAddr + alignedOffset);
     allocOut.bufferOffset = alignedOffset;
-    offset = nextOffset;
+    m_offset = nextOffset;
+    m_syncPoint = std::max(m_syncPoint, syncPoint);
 
     return true;
 }

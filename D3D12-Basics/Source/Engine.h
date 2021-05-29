@@ -4,6 +4,8 @@
 
 void EngineInitialise();
 
+void EngineAssetsLoad();
+
 void EngineDispose();
 
 void EngineLog(const char* message);

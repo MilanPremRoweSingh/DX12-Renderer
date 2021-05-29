@@ -130,6 +130,9 @@ public:
     void Present(
         void);
 
+    void AdvanceFrame(
+        void);
+
 private:
 
     D3D12_CPU_DESCRIPTOR_HANDLE AllocateCPUGeneralDescriptor(

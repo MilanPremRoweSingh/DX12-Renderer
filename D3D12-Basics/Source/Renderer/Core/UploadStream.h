@@ -30,27 +30,41 @@ public:
     
     UploadStream(Device* device, size_t pageSize = _32MB);
 
-    Allocation Allocate(size_t size);
-    Allocation AllocateAligned(size_t size, size_t align);
+    Allocation Allocate(size_t size, uint64 syncPoint);
+    Allocation AllocateAligned(size_t size, size_t align, uint64 syncPoint);
 
-    void ResetAllocations();
+    void ResetAllocations(uint64 syncPoint);
 
 
 private:
-    struct Page
+    class Page
     {
-        ComPtr<ID3D12Resource> pageBuffer;
-        void* cpuAddr;
-        size_t offset;
-        size_t pageSize;
-
+    public:
         Page() = delete;
         Page(size_t _pageSize, ID3D12Resource* _pageBuffer);
         ~Page();
 
-        bool Allocate(size_t size, size_t align, Allocation& allocOut);
+        bool Allocate(size_t size, size_t align, uint64 syncPoint, Allocation& allocOut);
 
         void Reset();
+
+        uint64 GetSyncPoint()
+        {
+            return m_syncPoint;
+        }
+
+        bool IsEmpty()
+        {
+            return m_offset == 0;
+        }
+
+    private:
+        ComPtr<ID3D12Resource> m_pageBuffer;
+        void* m_cpuAddr;
+        size_t m_offset;
+        size_t m_pageSize;
+        uint64 m_syncPoint;
+
     };
 
     Device* m_device;

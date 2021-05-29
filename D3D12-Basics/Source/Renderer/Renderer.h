@@ -22,9 +22,17 @@ public:
     Renderer();
     ~Renderer();
 
-    void Render();
+    void Render(
+        void);
 
-    void FlushGPU();
+    void FlushGPU(
+        void);
+
+    void UploadBegin(
+        void);
+
+    void UploadEnd(
+        void);
 
     void ConstantDataSetEntry(
         const ConstantDataEntry& entry,

@@ -318,7 +318,7 @@ void D3D12Core::ConstantBufferSetData(
     }
     else
     {
-        m_dynamicConstantBufferAllocations[id] = m_uploadStream->AllocateAligned(Utils::AlignUp(size, (size_t)D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        m_dynamicConstantBufferAllocations[id] = m_uploadStream->AllocateAligned(Utils::AlignUp(size, (size_t)D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, m_fenceValue);
         memcpy(m_dynamicConstantBufferAllocations[id].cpuAddr, data, size);
     }
     
@@ -416,11 +416,9 @@ void D3D12Core::BufferCreate(
     void* initialData,
     ID3D12Resource** ppBuffer)
 {
-    CommandListBegin();
-
     m_device->CreateBuffer(heapProps, size, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, ppBuffer);
 
-    UploadStream::Allocation uploadBufferAlloc = m_uploadStream->Allocate(size);
+    UploadStream::Allocation uploadBufferAlloc = m_uploadStream->Allocate(size, m_fenceValue);
     memcpy(uploadBufferAlloc.cpuAddr, initialData, size);
     GetCurrentCmdList()->CopyBufferRegion(*ppBuffer, 0, uploadBufferAlloc.buffer, uploadBufferAlloc.bufferOffset, size);
     if (initialState != D3D12_RESOURCE_STATE_COPY_DEST)
@@ -438,8 +436,6 @@ void D3D12Core::BufferCreate(
 
         GetCurrentCmdList()->ResourceBarrier(1, &barrier);
     }
-
-    CommandListExecute();
 }
 
 void D3D12Core::Texture2DCreateInternal(
@@ -453,8 +449,6 @@ void D3D12Core::Texture2DCreateInternal(
     void* initialData,
     ID3D12Resource** ppTexture)
 {
-    CommandListBegin();
-
     m_device->CreateTexture2D(heapProps, width, height, mipLevels, format, heapFlags, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, nullptr, ppTexture);
 
     uint32 rowPitch = width * GetDXGIFormatBPP(format) / 8;
@@ -467,7 +461,7 @@ void D3D12Core::Texture2DCreateInternal(
     footprint.Footprint.Format = format;
     footprint.Footprint.RowPitch = alignedRowPitch;
 
-    UploadStream::Allocation uploadBufferAlloc = m_uploadStream->AllocateAligned(slicePitch, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+    UploadStream::Allocation uploadBufferAlloc = m_uploadStream->AllocateAligned(slicePitch, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT, m_fenceValue);
     footprint.Offset = uploadBufferAlloc.bufferOffset;
 
     for (uint32 i = 0; i < height; i++)
@@ -502,8 +496,6 @@ void D3D12Core::Texture2DCreateInternal(
 
         GetCurrentCmdList()->ResourceBarrier(1, &barrier);
     }
-
-    CommandListExecute();
 }
 
 VertexBufferID D3D12Core::VertexBufferCreate(
@@ -676,8 +668,7 @@ void D3D12Core::CommandListExecute()
 
 void D3D12Core::CommandListBegin()
 {
-    // BAaaaaAAaad
-    WaitForGPU();
+    m_uploadStream->ResetAllocations(m_frameFenceValues[m_frameIndex]);
     ID3D12CommandAllocator* currCmdAllocator = m_cmdAllocators[m_frameIndex].Get();
     ASSERT_SUCCEEDED(currCmdAllocator->Reset());
     ASSERT_SUCCEEDED(GetCurrentCmdList()->Reset(currCmdAllocator, m_pipelineState.Get()));
@@ -786,6 +777,14 @@ void D3D12Core::Present()
 
     WaitForGPU();
 
+    AdvanceFrame();
+
+    m_pDescriptorPool->Reset();
+}
+
+void D3D12Core::AdvanceFrame(
+    void)
+{
     m_frameFenceValues[m_frameIndex] = ++m_fenceValue;
     ASSERT_SUCCEEDED(m_cmdQueue->Signal(m_fence.Get(), m_frameFenceValues[m_frameIndex]));
 
@@ -796,7 +795,4 @@ void D3D12Core::Present()
         ASSERT_SUCCEEDED(m_fence->SetEventOnCompletion(m_frameFenceValues[m_frameIndex], m_fenceEvent));
         WaitForSingleObject(m_fenceEvent, INFINITE);
     }
-
-    m_uploadStream->ResetAllocations();
-    m_pDescriptorPool->Reset();
 }
