@@ -1,6 +1,8 @@
 #pragma once
 #include "D3D12Header.h"
 
+#include <queue>
+
 class Device;
 
 // Naive descriptor pool, not set up for multi-frame synchronisation. Will improve on this later
@@ -21,7 +23,10 @@ public:
         void);
 
     void Reset(
-        void);
+        uint64 syncPoint);
+
+    void EndFrame(
+        uint64 syncPoint);
 
     inline ID3D12DescriptorHeap* GetGPUDescriptorHeap()
     {
@@ -41,6 +46,19 @@ private:
     int32 m_lastStagedSlot;
 
     ComPtr<ID3D12DescriptorHeap> m_gpuPool;
-    uint32 m_numComittedDescriptors;
+    uint32 m_head;
+    uint32 m_currTail;
+
+    struct Tail
+    {
+        Tail(uint32 _offset, uint64 _syncPoint) : 
+            offset(_offset),
+            syncPoint(_syncPoint) {}
+
+        uint32 offset;
+        uint64 syncPoint;
+    };
+
+    std::queue<Tail> m_tails;
 };
 

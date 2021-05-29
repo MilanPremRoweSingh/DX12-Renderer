@@ -668,7 +668,6 @@ void D3D12Core::CommandListExecute()
 
 void D3D12Core::CommandListBegin()
 {
-    m_uploadStream->ResetAllocations(m_frameFenceValues[m_frameIndex]);
     ID3D12CommandAllocator* currCmdAllocator = m_cmdAllocators[m_frameIndex].Get();
     ASSERT_SUCCEEDED(currCmdAllocator->Reset());
     ASSERT_SUCCEEDED(GetCurrentCmdList()->Reset(currCmdAllocator, m_pipelineState.Get()));
@@ -775,16 +774,14 @@ void D3D12Core::Present()
 {
     ASSERT_SUCCEEDED(m_swapChain3->Present(1, 0));
 
-    WaitForGPU();
-
     AdvanceFrame();
-
-    m_pDescriptorPool->Reset();
 }
 
 void D3D12Core::AdvanceFrame(
     void)
 {
+    m_pDescriptorPool->EndFrame(m_fenceValue);
+
     m_frameFenceValues[m_frameIndex] = ++m_fenceValue;
     ASSERT_SUCCEEDED(m_cmdQueue->Signal(m_fence.Get(), m_frameFenceValues[m_frameIndex]));
 
@@ -795,4 +792,7 @@ void D3D12Core::AdvanceFrame(
         ASSERT_SUCCEEDED(m_fence->SetEventOnCompletion(m_frameFenceValues[m_frameIndex], m_fenceEvent));
         WaitForSingleObject(m_fenceEvent, INFINITE);
     }
+
+    m_pDescriptorPool->Reset(m_frameFenceValues[m_frameIndex]);
+    m_uploadStream->ResetAllocations(m_frameFenceValues[m_frameIndex]);
 }

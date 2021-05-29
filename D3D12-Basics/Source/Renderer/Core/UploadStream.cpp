@@ -58,7 +58,7 @@ void UploadStream::ResetAllocations(uint64 syncPoint)
 
     if (firstNotReset == m_pages.begin())
     {
-        // First element has a higher syncPoint, syncPoint is monotonically increasing so no later elements are resetable either
+        // First element has a higher syncPoint, syncPoint is monotonically increasing so no later elements are resettable either
         return;
     }
 
@@ -74,7 +74,6 @@ UploadStream::Page::Page(size_t _pageSize, ID3D12Resource* _pageBuffer)
 
     D3D12_RANGE range = {0,0};
     m_pageBuffer->Map(0, &range, &m_cpuAddr);
-
 }
 
 UploadStream::Page::~Page()
